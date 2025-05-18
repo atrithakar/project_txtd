@@ -14,7 +14,11 @@ char decode_nibble(unsigned char nibble) {
         case 0b0111: return '7';
         case 0b1000: return '8';
         case 0b1001: return '9';
-        case 0b1010: return '.';
+        case 0b1010: return '.';         // Decimal Symbol
+        case 0b1011: return ' ';         // Space Symbol
+        case 0b1100: return '\t';        // Tab Symbol
+        case 0b1101: return '\n';        // Newline Symbol
+        case 0b1111: return '\0';        // EOF Symbol (special handling)
         default:
             fprintf(stderr, "Invalid nibble in file: 0x%X\n", nibble);
             exit(EXIT_FAILURE);
@@ -33,16 +37,15 @@ int main() {
         unsigned char high = (byte >> 4) & 0x0F;
         unsigned char low  = byte & 0x0F;
 
-        // Decode and print both nibbles
+        // Stop decoding if EOF nibble is hit
+        if (high == 0b1111) break;
         printf("%c", decode_nibble(high));
 
-        // For odd number of characters, the last nibble may be padding — so we stop reading if EOF is hit
-        if (!feof(in)) {
-            printf("%c", decode_nibble(low));
-        }
+        if (low == 0b1111) break;
+        printf("%c", decode_nibble(low));
     }
 
-    printf("\n");
     fclose(in);
+    // printf("X");
     return 0;
 }
