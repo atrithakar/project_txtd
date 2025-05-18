@@ -1,2 +1,5 @@
 *.exe
 *.txtd
+*.txt
+!mappings.txt
+*.7z
