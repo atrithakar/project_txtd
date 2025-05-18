@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-// Function to convert 4-bit value back to character
+// Map 4-bit value to character
 char decode_nibble(unsigned char nibble) {
     switch (nibble) {
         case 0b0000: return '0';
@@ -14,21 +14,33 @@ char decode_nibble(unsigned char nibble) {
         case 0b0111: return '7';
         case 0b1000: return '8';
         case 0b1001: return '9';
-        case 0b1010: return '.';         // Decimal Symbol
-        case 0b1011: return ' ';         // Space Symbol
-        case 0b1100: return '\t';        // Tab Symbol
-        case 0b1101: return '\n';        // Newline Symbol
-        case 0b1111: return '\0';        // EOF Symbol (special handling)
+        case 0b1010: return '.';
+        case 0b1011: return ' ';
+        case 0b1100: return '\t';
+        case 0b1101: return '\n';
+        case 0b1111: return '\0';
         default:
             fprintf(stderr, "Invalid nibble in file: 0x%X\n", nibble);
             exit(EXIT_FAILURE);
     }
 }
 
-int main() {
-    FILE *in = fopen("output.txtd", "rb");
+int main(int argc, char *argv[]) {
+    if (argc != 3) {
+        fprintf(stderr, "Usage: %s input.txtd output.txt\n", argv[0]);
+        return 1;
+    }
+
+    FILE *in = fopen(argv[1], "rb");
     if (!in) {
-        perror("Failed to open output.txtd");
+        perror("Failed to open input file");
+        return 1;
+    }
+
+    FILE *out = fopen(argv[2], "w");
+    if (!out) {
+        perror("Failed to create output file");
+        fclose(in);
         return 1;
     }
 
@@ -37,15 +49,15 @@ int main() {
         unsigned char high = (byte >> 4) & 0x0F;
         unsigned char low  = byte & 0x0F;
 
-        // Stop decoding if EOF nibble is hit
         if (high == 0b1111) break;
-        printf("%c", decode_nibble(high));
+        fputc(decode_nibble(high), out);
 
         if (low == 0b1111) break;
-        printf("%c", decode_nibble(low));
+        fputc(decode_nibble(low), out);
     }
 
     fclose(in);
-    // printf("X");
+    fclose(out);
+    printf("Decoded to %s\n", argv[2]);
     return 0;
 }
