@@ -16,6 +16,10 @@ unsigned char encode_char(char c) {
         case '8': return 0b1000;
         case '9': return 0b1001;
         case '.': return 0b1010;
+        case ' ': return 0b1011;  // Space
+        case '\t': return 0b1100; // Tab
+        case '\n': return 0b1101; // Newline
+        case '\0': return 0b1111; // EOF (special handling)
         default:
             fprintf(stderr, "Invalid character: %c\n", c);
             exit(EXIT_FAILURE);
@@ -23,7 +27,7 @@ unsigned char encode_char(char c) {
 }
 
 int main() {
-    char input[100000];  // for iteration 1, buffer limit is fine
+    char input[100000];  // buffer for manual input
     printf("Enter numeric input (digits and '.'): ");
     scanf("%s", input);
 
@@ -35,7 +39,7 @@ int main() {
 
     int len = strlen(input);
     unsigned char buffer = 0;
-    int half = 0;  // 0 means high nibble empty, 1 means low nibble filled
+    int half = 0;  // 0: high nibble empty, 1: low nibble filled
 
     for (int i = 0; i < len; ++i) {
         unsigned char val = encode_char(input[i]);
@@ -45,18 +49,24 @@ int main() {
             half = 1;
         } else {
             buffer |= val;      // fill low nibble
-            fwrite(&buffer, 1, 1, out);  // write full byte
+            fwrite(&buffer, 1, 1, out);
             half = 0;
         }
     }
 
-    // if an odd number of digits, flush remaining nibble
-    if (half == 1) {
+    // Append EOF (0b1111) at the end
+    if (half == 0) {
+        // high nibble empty, so write EOF in high nibble, pad low nibble with 0000
+        buffer = 0b1111 << 4;
+        fwrite(&buffer, 1, 1, out);
+    } else {
+        // low nibble empty, so OR EOF to low nibble
+        buffer |= 0b1111;
         fwrite(&buffer, 1, 1, out);
     }
 
     fclose(out);
-    printf("Successfully written to output.txtd\n");
+    printf("Successfully written to output.txtd (EOF included)\n");
 
     return 0;
 }
