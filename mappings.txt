@@ -12,5 +12,5 @@
 1 0 1 1 -> Space Symbol,
 1 1 0 0 -> Tab Symbol,
 1 1 0 1 -> Newline Symbol,
-1 1 1 0 -> Unused,
+1 1 1 0 -> , (Comma),
 1 1 1 1 -> EOF
