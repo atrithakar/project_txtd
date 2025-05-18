@@ -18,6 +18,7 @@ char decode_nibble(unsigned char nibble) {
         case 0b1011: return ' ';
         case 0b1100: return '\t';
         case 0b1101: return '\n';
+        case 0b1110: return ',';
         case 0b1111: return '\0';
         default:
             fprintf(stderr, "Invalid nibble in file: 0x%X\n", nibble);

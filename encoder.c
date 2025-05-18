@@ -19,6 +19,7 @@ unsigned char encode_char(char c) {
         case ' ': return 0b1011;
         case '\t': return 0b1100;
         case '\n': return 0b1101;
+        case ',' : return 0b1110;
         case '\0': return 0b1111;
         default:
             fprintf(stderr, "Invalid character: '%c'\n", c);
