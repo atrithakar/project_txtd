@@ -27,26 +27,18 @@ unsigned char encode_char(char c) {
     }
 }
 
-int main(int argc, char *argv[]) {
-    if (argc != 3) {
-        fprintf(stderr, "Usage: %s input.txt outputName\n", argv[0]);
-        return 1;
-    }
-
-    FILE *in = fopen(argv[1], "r");
+void encode(const char *input_filename, const char *output_filename) {
+    FILE *in = fopen(input_filename, "r");
     if (!in) {
         perror("Failed to open input file");
-        return 1;
+        exit(EXIT_FAILURE);
     }
-
-    char output_filename[256];
-    snprintf(output_filename, sizeof(output_filename), "%s.txtd", argv[2]);
 
     FILE *out = fopen(output_filename, "wb");
     if (!out) {
         perror("Failed to create output file");
         fclose(in);
-        return 1;
+        exit(EXIT_FAILURE);
     }
 
     unsigned char buffer = 0;
@@ -76,5 +68,4 @@ int main(int argc, char *argv[]) {
     fclose(in);
     fclose(out);
     printf("Encoded to %s\n", output_filename);
-    return 0;
 }

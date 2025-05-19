@@ -26,23 +26,18 @@ char decode_nibble(unsigned char nibble) {
     }
 }
 
-int main(int argc, char *argv[]) {
-    if (argc != 3) {
-        fprintf(stderr, "Usage: %s input.txtd output.txt\n", argv[0]);
-        return 1;
-    }
-
-    FILE *in = fopen(argv[1], "rb");
+void decode(const char *input_filename, const char *output_filename) {
+    FILE *in = fopen(input_filename, "rb");
     if (!in) {
         perror("Failed to open input file");
-        return 1;
+        exit(EXIT_FAILURE);
     }
 
-    FILE *out = fopen(argv[2], "w");
+    FILE *out = fopen(output_filename, "w");
     if (!out) {
         perror("Failed to create output file");
         fclose(in);
-        return 1;
+        exit(EXIT_FAILURE);
     }
 
     unsigned char byte;
@@ -59,6 +54,5 @@ int main(int argc, char *argv[]) {
 
     fclose(in);
     fclose(out);
-    printf("Decoded to %s\n", argv[2]);
-    return 0;
+    printf("Decoded to %s\n", output_filename);
 }
