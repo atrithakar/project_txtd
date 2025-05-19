@@ -84,7 +84,9 @@ Files are DIFFERENT
 .
 ├── encoder.c          # Encoder source code
 ├── decoder.c          # Decoder source code
-├── compare_files.c   # File comparison utility
+├── compare_files.c   # File comparison 
+├── txt_to_txtd.c # TXT to TXTD converter source code
+├── txtd_to_txt.c # TXTD to TXT converter source code
 ├── mappings.txt      # Nibble-to-symbol mapping rules
 ├── README.md         # This file
 ├── .gitignore
@@ -103,6 +105,22 @@ MIT License — see the LICENSE file.
 
 Atri Thakar  
 [GitHub](https://github.com/atri-thakar)
+
+---
+
+### Story / Background
+
+txtd started as a personal challenge to build a simple yet efficient tool to encode and decode text files containing mostly numerical data and a limited set of special symbols. I was inspired by the need to save storage space and simplify handling of numerical datasets by compressing them into a custom file format.
+
+The inspiration hit me after I calculated and stored **300 million digits of Pi**, which took up a massive **286MB** of space on disk. Seeing that unexpectedly large file size, I realized there had to be a better way to store this kind of data. That’s when I decided to develop txtd — a tool to compress large numerical data by encoding the digits and symbols using custom nibble mappings. The encoded Pi digits file ended up taking only **143MB**, cutting the storage requirement by approximately **50%**, which was exactly the result I was aiming for.
+
+By applying nibble-sized mappings defined in `mappings.txt` to the digits and symbols, txtd’s encoder effectively reduces file size by approximately **50%**, making it ideal for compressing large numerical datasets.
+
+The biggest challenge was to ensure the encoder and decoder perfectly restored the original file without losing a single bit, verified by comparing SHA-256 hashes. This also helped me debug and improve the code, including handling deprecated OpenSSL functions during development.
+
+In the end, txtd saves up to **50%** storage space on compatible numerical text files, making it a practical tool for anyone dealing with large numerical datasets or CSV files that fit within the defined symbol set.
+
+This project helped me deepen my understanding of file handling, hashing, and command-line utility design — and gave me a powerful tool for personal and future projects.
 
 ---
 
