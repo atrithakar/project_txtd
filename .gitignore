@@ -3,3 +3,4 @@
 *.txt
 !mappings.txt
 *.7z
+*.csv
