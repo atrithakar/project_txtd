@@ -37,6 +37,72 @@ void get_basename(char *basename, const char *path) {
     if (dot) *dot = '\0';
 }
 
+// List of common delimiters
+const char COMMON_DELIMS[] = {',', ';', '\t', '|', '^', '~', 0};
+
+// Utility: check if character is a common delimiter
+int is_common_delim(char c) {
+    for (int i = 0; COMMON_DELIMS[i]; ++i) {
+        if (c == COMMON_DELIMS[i]) return 1;
+    }
+    return 0;
+}
+
+// Improved delimiter detection: only count common delimiters outside quotes
+char detect_delimiter(const char *line) {
+    int counts[256] = {0};
+    int in_quote = 0;
+    for (size_t i = 0; line[i] && line[i] != '\n'; ++i) {
+        char c = line[i];
+        if (c == '"' || c == '\'') {
+            in_quote = !in_quote;
+            continue;
+        }
+        if (in_quote) continue;
+        if (is_common_delim(c)) {
+            counts[(unsigned char)c]++;
+        }
+    }
+    // Find the most frequent common delimiter
+    int max_count = 0;
+    char delimiter = ',';
+    for (int i = 0; COMMON_DELIMS[i]; ++i) {
+        char c = COMMON_DELIMS[i];
+        if (counts[(unsigned char)c] > max_count) {
+            max_count = counts[(unsigned char)c];
+            delimiter = c;
+        }
+    }
+    return delimiter;
+}
+
+// Utility: detect delimiter from header line
+char detect_delimiter_old(const char *line) {
+    int counts[256] = {0};
+    int in_quote = 0;
+    for (size_t i = 0; line[i] && line[i] != '\n'; ++i) {
+        char c = line[i];
+        if (c == '"' || c == '\'') {
+            in_quote = !in_quote;
+            continue;
+        }
+        if (in_quote) continue;
+        // Ignore spaces, tabs, alphanumerics, dot
+        if (c == ' ' || c == '\t' || (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '.') continue;
+        counts[(unsigned char)c]++;
+    }
+    // Find the most frequent non-zero character
+    int max_count = 0;
+    char delimiter = ',';
+    for (int i = 0; i < 256; ++i) {
+        if (counts[i] > max_count) {
+            max_count = counts[i];
+            delimiter = (char)i;
+        }
+    }
+    return delimiter;
+}
+
 int main(int argc, char *argv[]) {
     if (argc != 2) {
         fprintf(stderr, "Usage: %s input.csv\n", argv[0]);
@@ -59,12 +125,14 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    char header_path[300], data_path[300];
+    char header_path[300], data_path[300], delim_path[300];
     snprintf(header_path, sizeof(header_path), "%s/%s.header.txt", basename, basename);
     snprintf(data_path, sizeof(data_path), "%s/%s.data.txtd", basename, basename);
+    snprintf(delim_path, sizeof(delim_path), "%s/%s.delimeter.txt", basename, basename);
 
     FILE *header = NULL;
     FILE *data = fopen(data_path, "wb");
+    FILE *delim_file = NULL;
     if (!data) {
         perror("Failed to create data.txtd");
         fclose(in);
@@ -75,35 +143,48 @@ int main(int argc, char *argv[]) {
     int is_first_line = 1;
     int half = 0;
     unsigned char buffer = 0;
+    char delimiter = 0;
 
     while (fgets(line, sizeof(line), in)) {
         if (is_first_line) {
-            int has_invalid = 0;
-            for (size_t i = 0; i < strlen(line); ++i) {
-                if (encode_char(line[i]) == 0xFF) {
-                    has_invalid = 1;
-                    break;
-                }
+            delimiter = detect_delimiter(line);
+            // Write delimiter to file
+            delim_file = fopen(delim_path, "w");
+            if (!delim_file) {
+                perror("Failed to write delimiter");
+                fclose(in);
+                fclose(data);
+                return 1;
             }
+            fputc(delimiter, delim_file);
+            fclose(delim_file);
 
-            if (has_invalid) {
-                header = fopen(header_path, "w");
-                if (!header) {
-                    perror("Failed to write header");
-                    fclose(in);
-                    fclose(data);
-                    return 1;
-                }
-                fputs(line, header);
-                fclose(header);
-                is_first_line = 0;
-                continue;  // skip header from encoding
+            // Write header as-is
+            header = fopen(header_path, "w");
+            if (!header) {
+                perror("Failed to write header");
+                fclose(in);
+                fclose(data);
+                return 1;
             }
-            // if no invalid characters, encode it normally
+            fputs(line, header);
+            fclose(header);
+
+            is_first_line = 0;
+            continue;  // skip header from encoding
         }
 
+        int in_quote = 0;
         for (size_t i = 0; i < strlen(line); ++i) {
-            unsigned char val = encode_char(line[i]);
+            char c = line[i];
+            if (c == '"' || c == '\'') {
+                in_quote = !in_quote;
+            }
+            // If not in quotes and c is a common delimiter, treat as comma
+            if (!in_quote && is_common_delim(c)) {
+                c = ',';
+            }
+            unsigned char val = encode_char(c);
             if (val == 0xFF) {
                 fprintf(stderr, "Unexpected invalid character '%c' in line: %s\n", line[i], line);
                 fclose(in);
@@ -120,8 +201,6 @@ int main(int argc, char *argv[]) {
                 half = 0;
             }
         }
-
-        is_first_line = 0;
     }
 
     if (half == 0) {
@@ -136,9 +215,8 @@ int main(int argc, char *argv[]) {
     fclose(data);
 
     printf("Encoding complete.\n");
-    if (header) {
-        printf("Header stored at: %s\n", header_path);
-    }
+    printf("Delimiter stored at: %s\n", delim_path);
+    printf("Header stored at: %s\n", header_path);
     printf("Encoded data stored at: %s\n", data_path);
     return 0;
 }
