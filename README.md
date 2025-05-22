@@ -75,7 +75,7 @@ Files are DIFFERENT
 | hw_200.csv          | 17,998,823           | 8,475,152           | ~47% smaller |
 
 
-*Savings depend on input content matching symbols in `mappings.txt`.*
+*Savings depend on input content matching symbols in `mappings.txt`.*<br>
 *NOTE: For best results, make sure the original CSV is saved in "CSV UTF-8 (Comma Delimited)" format*
 
 ---
