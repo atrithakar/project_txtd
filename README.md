@@ -87,8 +87,10 @@ Files are DIFFERENT
 ├── encoder.c          # Encoder source code
 ├── decoder.c          # Decoder source code
 ├── compare_files.c    # File comparison 
-├── txt_to_txtd.c      # TXT to TXTD converter source code
-├── txtd_to_txt.c      # TXTD to TXT converter source code
+├── txt_to_txtd.c      # TXT to TXTD encoder source code
+├── txtd_to_txt.c      # TXTD to TXT decoder source code
+├── csv_to_txtd.c      # CSV to TXTD encoder source code
+├── txtd_to_csv.c      # TXTD to CSV decoder source code
 ├── mappings.txt       # Nibble-to-symbol mapping rules
 ├── README.md          # This file
 ├── .gitignore
