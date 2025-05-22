@@ -72,9 +72,11 @@ Files are DIFFERENT
 | File                | Original Size (bytes) | Encoded Size (bytes) | Savings     |
 |---------------------|----------------------|---------------------|-------------|
 | pi_digits.txt       | 300,000,001          | 150,000,001         | ~50% smaller |
+| hw_200.csv          | 17,998,823           | 8,475,152           | ~47% smaller |
 
 
 *Savings depend on input content matching symbols in `mappings.txt`.*
+*NOTE: For best results, make sure the original CSV is saved in "CSV UTF-8 (Comma Delimited)" format*
 
 ---
 
