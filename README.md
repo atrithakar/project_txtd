@@ -86,11 +86,11 @@ Files are DIFFERENT
 .
 ├── encoder.c          # Encoder source code
 ├── decoder.c          # Decoder source code
-├── compare_files.c   # File comparison 
-├── txt_to_txtd.c # TXT to TXTD converter source code
-├── txtd_to_txt.c # TXTD to TXT converter source code
-├── mappings.txt      # Nibble-to-symbol mapping rules
-├── README.md         # This file
+├── compare_files.c    # File comparison 
+├── txt_to_txtd.c      # TXT to TXTD converter source code
+├── txtd_to_txt.c      # TXTD to TXT converter source code
+├── mappings.txt       # Nibble-to-symbol mapping rules
+├── README.md          # This file
 ├── .gitignore
 └── ...
 ```
