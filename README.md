@@ -1,8 +1,8 @@
 # txtd
 
-**txtd** is a command-line utility suite designed specifically for **numerical data text files** that contain only symbols defined in `mappings.txt`. It encodes `.txt` files into a compact nibble-based format `.txtd` and decodes them back perfectly, ensuring **lossless** conversion.
+**txtd** is a command-line utility suite designed specifically for **numerical data text files** and **CSV files** that contain only symbols defined in `mappings.txt`. It encodes `.txt` and `.csv` files into a compact nibble-based format `.txtd` and decodes them back perfectly, ensuring **lossless** conversion.
 
-This tool can save **up to 50%** storage space by efficiently compressing numerical and symbol data based on  custom nibble mappings.
+This tool can save **up to 50%** storage space by efficiently encoding numerical and symbol data based on custom nibble mappings.
 
 Additionally, a file comparison utility verifies the correctness of encoding and decoding by comparing SHA-256 hashes of files.
 
@@ -42,13 +42,23 @@ gcc -o compare_files compare_files.c -lssl -lcrypto
 ### Encode a TXT file (numerical data with allowed symbols)
 
 ```
-./encode input.txt output.txtd
+./txt_to_txtd.exe input.txt output.txtd
 ```
 
-### Decode a TXTD file
+### Decode a TXTD file into TXT file
 
 ```
-./decode input.txtd output.txt
+./txtd_to_txt.exe input.txtd output.txt
+```
+
+### Encode a CSV file (only numerical data in the body and allowed delimiters)
+```
+./csv_to_txtd.exe csv_name.csv
+```
+
+### Decode a TXTD file into CSV file
+```
+./txtd_to_csv.exe csv_name
 ```
 
 ### Compare two files
@@ -108,21 +118,21 @@ MIT License — see the LICENSE file.
 ## Author
 
 Atri Thakar  
-[GitHub](https://github.com/atri-thakar)
+[GitHub](https://github.com/atrithakar)
 
 ---
 
 ### Story / Background
 
-txtd started as a personal challenge to build a simple yet efficient tool to encode and decode text files containing mostly numerical data and a limited set of special symbols. I was inspired by the need to save storage space and simplify handling of numerical datasets by compressing them into a custom file format.
+txtd started as a personal challenge to build a simple yet efficient tool to encode and decode text files containing mostly numerical data and a limited set of special symbols. I was inspired by the need to save storage space and simplify handling of numerical datasets by encoding them into a custom file format.
 
-The inspiration hit me after I calculated and stored **300 million digits of Pi**, which took up a massive **286MB** of space on disk. Seeing that unexpectedly large file size, I realized there had to be a better way to store this kind of data. That’s when I decided to develop txtd — a tool to compress large numerical data by encoding the digits and symbols using custom nibble mappings. The encoded Pi digits file ended up taking only **143MB**, cutting the storage requirement by approximately **50%**, which was exactly the result I was aiming for.
+The inspiration hit me after I calculated and stored **300 million digits of Pi**, which took up a massive **286MB** of space on disk. Seeing that unexpectedly large file size, I realized there had to be a better way to store this kind of data. That’s when I decided to develop txtd — a tool to encode large numerical data containing the digits and symbols using custom nibble mappings. The encoded Pi digits file ended up taking only **143MB**, cutting the storage requirement by approximately **50%**, which was exactly the result I was aiming for.
 
-By applying nibble-sized mappings defined in `mappings.txt` to the digits and symbols, txtd’s encoder effectively reduces file size by approximately **50%**, making it ideal for compressing large numerical datasets.
+By applying nibble-sized mappings defined in `mappings.txt` to the digits and symbols, txtd’s encoder effectively reduces file size by approximately **50%**, making it ideal for encoding large numerical datasets.
 
 The biggest challenge was to ensure the encoder and decoder perfectly restored the original file without losing a single bit, verified by comparing SHA-256 hashes. This also helped me debug and improve the code, including handling deprecated OpenSSL functions during development.
 
-In the end, txtd saves up to **50%** storage space on compatible numerical text files, making it a practical tool for anyone dealing with large numerical datasets or CSV files that fit within the defined symbol set.
+In the end, txtd saves up to **50%** storage space on compatible numerical text and numerical csv files, making it a practical tool for anyone dealing with large numerical datasets or CSV files that fit within the defined symbol set.
 
 This project helped me deepen my understanding of file handling, hashing, and command-line utility design — and gave me a powerful tool for personal and future projects.
 
