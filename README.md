@@ -94,17 +94,22 @@ Files are DIFFERENT
 
 ```
 .
-├── encoder.c          # Encoder source code
-├── decoder.c          # Decoder source code
-├── compare_files.c    # File comparison 
-├── txt_to_txtd.c      # TXT to TXTD encoder source code
-├── txtd_to_txt.c      # TXTD to TXT decoder source code
-├── csv_to_txtd.c      # CSV to TXTD encoder source code
-├── txtd_to_csv.c      # TXTD to CSV decoder source code
-├── mappings.txt       # Nibble-to-symbol mapping rules
-├── README.md          # This file
+├── txtd-st/
+│   ├── encoder.c             # Encoder source code
+│   ├── decoder.c             # Decoder source code
+│   ├── compare_files.c       # File comparison
+│   ├── txt_to_txtd.c         # TXT to TXTD encoder
+│   ├── txtd_to_txt.c         # TXTD to TXT decoder
+│   ├── csv_to_txtd.c         # CSV to TXTD encoder
+│   └── txtd_to_csv.c         # TXTD to CSV decoder
+├── txtd-cuda/
+│   ├── txt_to_txtd_cuda.cu   # TXT to TXTD encoder (GPU Accelerated)
+│   └── txtd_to_txt_cuda.cu   # TXTD to TXT decoder (GPU Accelerated)
+├── mappings.txt              # Nibble-to-symbol mapping rules
+├── README.md                 # This file
 ├── .gitignore
 └── ...
+
 ```
 
 ---
