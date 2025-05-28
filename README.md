@@ -24,6 +24,7 @@ Additionally, a file comparison utility verifies the correctness of encoding and
 
 - MinGW or any GCC-compatible compiler  
 - OpenSSL libraries (`libssl` and `libcrypto`) for SHA-256 support
+- NVCC compiler (For taking advantage of GPU accelerated implementation)
 
 ### Build
 
@@ -31,6 +32,12 @@ Additionally, a file comparison utility verifies the correctness of encoding and
 gcc -o encode encoder.c
 gcc -o decode decoder.c
 gcc -o compare_files compare_files.c -lssl -lcrypto
+```
+
+(For taking advantage of GPU accelerated implementation)
+```
+nvcc txt_to_txtd_cuda.cu -o txt_to_txtd_cuda
+nvcc txtd_to_txt_cuda.cu -o txtd_to_txt_cuda
 ```
 
 *Adjust include/library paths if necessary.*
