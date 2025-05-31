@@ -114,6 +114,23 @@ Files are DIFFERENT
 
 ---
 
+## Performance Comparison: CUDA implementation vs Single-threaded CPU implementation
+
+Below are timing results for encoding and decoding using both the CUDA-accelerated implementation and the single-threaded CPU implementation on the same file (`pi_digits.txt`, **286MB**):
+
+| Step                        | CUDA Pipeline Time | CPU Pipeline Time |
+|-----------------------------|-------------------|-------------------|
+| Encode                      | 0.98s             | 9.86s             | 
+| Decode                      | 5.78s             | 11.22s            |
+
+**Summary:**
+- **CUDA implementation** is significantly faster for encoding and decoding large files.
+- **File integrity** is verified in both implementations using SHA-256 hashes.
+
+*NOTE: The timings may change from system to system and based on many other variables like ambient temperature too. This comparison is here just to give a rough idea about performance boost in CUDA implementation against the Single-Threaded CPU implementation*
+
+---
+
 ## Project Structure
 
 ```
