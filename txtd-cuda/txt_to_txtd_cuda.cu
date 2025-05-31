@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <cuda_runtime.h>
+#include <openssl/sha.h>
 
 #if defined(_WIN32)
 #include <direct.h>
@@ -12,7 +13,7 @@
 #define MKDIR(dir) mkdir(dir, 0777)
 #endif
 
-#define CHUNK_SIZE 1  // Number of bytes per GPU thread (change as needed)
+#define CHUNK_SIZE 500  // Number of bytes per GPU thread (change as needed)
 
 // Host-side encode_char table
 __device__ __constant__ unsigned char encode_table[128] = {
@@ -43,6 +44,28 @@ void fill_encode_table(unsigned char *table) {
     table['\t'] = 0b1100; table['\n'] = 0b1101; table[','] = 0b1110; table['\0'] = 0b1111;
 }
 
+// Helper to compute SHA-256 checksum and write as hex string to file
+int write_checksum(const char *input_filename, const char *output_filename) {
+    FILE *in = fopen(input_filename, "rb");
+    if (!in) return 1;
+    SHA256_CTX sha256;
+    SHA256_Init(&sha256);
+    unsigned char buf[32768];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), in)) > 0)
+        SHA256_Update(&sha256, buf, n);
+    fclose(in);
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    SHA256_Final(hash, &sha256);
+    FILE *out = fopen(output_filename, "w");
+    if (!out) return 2;
+    for (int i = 0; i < SHA256_DIGEST_LENGTH; i++)
+        fprintf(out, "%02x", hash[i]);
+    fprintf(out, "\n");
+    fclose(out);
+    return 0;
+}
+
 int main(int argc, char *argv[]) {
     if (argc != 2) {
         fprintf(stderr, "Usage: %s <input.txt>\n", argv[0]);
@@ -63,8 +86,9 @@ int main(int argc, char *argv[]) {
     // Create output directory named after input file (without extension)
     MKDIR(basename);
 
-    char outpath[512];
+    char outpath[512], checksum_path[512];
     snprintf(outpath, sizeof(outpath), "%s/%s.encoded.txtd", basename, basename);
+    snprintf(checksum_path, sizeof(checksum_path), "%s/%s.checksum.txt", basename, basename);
 
     // Read input file
     FILE *in = fopen(input_path, "rb");
@@ -105,8 +129,14 @@ int main(int argc, char *argv[]) {
     else { byte |= 0b1111; fwrite(&byte, 1, 1, out); }
     fclose(out);
 
+    // Write checksum of original input file
+    if (write_checksum(input_path, checksum_path) != 0) {
+        fprintf(stderr, "Failed to write checksum file\n");
+        // continue anyway
+    }
+
     cudaFree(d_in); cudaFree(d_out); free(buf); free(codes);
 
-    printf("Encoded file: %s\n", outpath);
+    printf("Encoded file: %s\nChecksum file: %s\n", outpath, checksum_path);
     return 0;
 }
