@@ -118,7 +118,7 @@ Files are DIFFERENT
 
 Below are timing results for encoding and decoding using both the CUDA-accelerated implementation and the single-threaded CPU implementation on the same file (`pi_digits.txt`, **286MB**):
 
-| Step                        | CUDA Pipeline Time | CPU Pipeline Time |
+| Step                        | CUDA Implementation Time | CPU Implementation Time |
 |-----------------------------|-------------------|-------------------|
 | Encode                      | 0.98s             | 9.86s             | 
 | Decode                      | 5.78s             | 11.22s            |
