@@ -23,10 +23,15 @@ Additionally, a file comparison utility verifies the correctness of encoding and
 ### Prerequisites
 
 - MinGW or any GCC-compatible compiler  
-- OpenSSL libraries (`libssl` and `libcrypto`) for SHA-256 support
-- NVCC compiler (For taking advantage of GPU accelerated implementation)
+- OpenSSL libraries (`libssl` and `libcrypto`) for SHA-256 support  
+- NVCC compiler (for GPU-accelerated implementation)
+- **For Windows/CUDA:**  
+  - [OpenSSL precompiled binaries](https://slproweb.com/products/Win32OpenSSL.html) (Win64 "Full" version recommended)
+  - Add `C:\OpenSSL-Win64\bin` to your system `PATH` for runtime DLLs
 
 ### Build
+
+#### Standard (CPU) tools
 
 ```
 gcc -o encode encoder.c
@@ -34,10 +39,12 @@ gcc -o decode decoder.c
 gcc -o compare_files compare_files.c -lssl -lcrypto
 ```
 
-(For taking advantage of GPU accelerated implementation)
+#### GPU-accelerated tools (CUDA)
+
+**On Windows (with OpenSSL in C:\OpenSSL-Win64):**
 ```
-nvcc txt_to_txtd_cuda.cu -o txt_to_txtd_cuda
-nvcc txtd_to_txt_cuda.cu -o txtd_to_txt_cuda
+nvcc -I"C:\OpenSSL-Win64\include" -L"C:\OpenSSL-Win64\lib\VC\x64\MD" txt_to_txtd_cuda.cu -o txt_to_txtd_cuda.exe -llibssl -llibcrypto
+nvcc -I"C:\OpenSSL-Win64\include" -L"C:\OpenSSL-Win64\lib\VC\x64\MD" txtd_to_txt_cuda.cu -o txtd_to_txt_cuda.exe -llibssl -llibcrypto
 ```
 
 *Adjust include/library paths if necessary.*
@@ -46,17 +53,27 @@ nvcc txtd_to_txt_cuda.cu -o txtd_to_txt_cuda
 
 ## Usage
 
-### Encode a TXT file (numerical data with allowed symbols)
+### Encode a TXT file (CPU)
+```
+./txt_to_txtd.exe input.txt
+```
 
+### Encode a TXT file (GPU/CUDA)
 ```
-./txt_to_txtd.exe input.txt output.txtd
+./txt_to_txtd_cuda.exe input.txt
+```
+- Output: Creates a folder named after the input file (without extension), containing `.encoded.txtd` and `.checksum.txt`.
+
+### Decode a TXTD file into TXT file (CPU)
+```
+./txtd_to_txt.exe folder_name
 ```
 
-### Decode a TXTD file into TXT file
-
+### Decode a TXTD file into TXT file (GPU/CUDA)
 ```
-./txtd_to_txt.exe input.txtd output.txt
+./txtd_to_txt_cuda.exe folder_name
 ```
+- Looks for `folder_name/folder_name.encoded.txtd`, decodes to `folder_name/folder_name_decoded.txt`, and verifies checksum with `folder_name/folder_name.checksum.txt`.
 
 ### Encode a CSV file (only numerical data in the body and allowed delimiters)
 ```
