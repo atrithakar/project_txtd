@@ -114,14 +114,16 @@ Files are DIFFERENT
 
 ---
 
-## Performance Comparison: CUDA implementation vs Single-threaded CPU implementation
+## Performance Comparison: CUDA vs Multithreaded CPU vs Single-threaded CPU Implementation
 
-Below are timing results for encoding and decoding using both the CUDA-accelerated implementation and the single-threaded CPU implementation on the same file (`pi_digits.txt`, **286MB**):
+Timing results for encoding and decoding `pi_digits.txt` (286MB):
 
-| Step                        | CUDA Implementation Time | CPU Implementation Time |
-|-----------------------------|-------------------|-------------------|
-| Encode                      | 0.98s             | 9.86s             | 
-| Decode                      | 5.78s             | 11.22s            |
+| Step   | CUDA (GPU) | CPU (Multithreaded) | CPU (Single-threaded) |
+|--------|------------|----------------------|------------------------|
+| Encode | 0.98s      | 3.49s                | 9.86s                  |
+| Decode | 5.75s      | 6.06s                | 11.22s                 |
+
+**NOTE:** The multithreaded CPU version is under internal development. It bridges the gap between CUDA acceleration and basic CPU processing, offering a strong middle ground for systems without a GPU.
 
 **Summary:**
 - **CUDA implementation** is significantly faster for encoding and decoding large files.
