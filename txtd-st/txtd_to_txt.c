@@ -45,16 +45,30 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    char *folder = argv[1];
-    char encoded_path[512], checksum_path[512], decoded_path[512], basename[256];
+    char folder_in[512];
+    strncpy(folder_in, argv[1], sizeof(folder_in)-1);
+    folder_in[sizeof(folder_in)-1] = '\0';
 
-    // Get basename from folder name (assume folder name is the base)
-    strncpy(basename, folder, sizeof(basename)-1);
-    basename[sizeof(basename)-1] = '\0';
+    // Remove trailing slash if present
+    size_t len = strlen(folder_in);
+    while (len > 0 && (folder_in[len-1] == '/' || folder_in[len-1] == '\\')) {
+        folder_in[len-1] = '\0';
+        len--;
+    }
 
-    snprintf(encoded_path, sizeof(encoded_path), "%s/%s.encoded.txtd", folder, basename);
-    snprintf(checksum_path, sizeof(checksum_path), "%s/%s.checksum.txt", folder, basename);
-    snprintf(decoded_path, sizeof(decoded_path), "%s/%s_decoded.txt", folder, basename);
+    // Extract basename (last component after / or \)
+    char *basename = folder_in;
+    char *slash = strrchr(folder_in, '/');
+    #ifdef _WIN32
+    char *bslash = strrchr(folder_in, '\\');
+    if (!slash || (bslash && bslash > slash)) slash = bslash;
+    #endif
+    if (slash) basename = slash + 1;
+
+    char encoded_path[512], checksum_path[512], decoded_path[512];
+    snprintf(encoded_path, sizeof(encoded_path), "%s/%s.encoded.txtd", folder_in, basename);
+    snprintf(checksum_path, sizeof(checksum_path), "%s/%s.checksum.txt", folder_in, basename);
+    snprintf(decoded_path, sizeof(decoded_path), "%s/%s_decoded.txt", folder_in, basename);
 
     // Decode the input binary file to a text format
     decode(encoded_path, decoded_path);
