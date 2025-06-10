@@ -4,7 +4,7 @@
 #include <cuda_runtime.h>
 #include <openssl/sha.h>
 
-#define CHUNK_SIZE 1000  // Number of nibbles per GPU thread (change as needed)
+#define CHUNK_SIZE 2000  // Number of nibbles per GPU thread (change as needed)
 
 // Device decode table
 __device__ __constant__ char decode_table[16] = {
