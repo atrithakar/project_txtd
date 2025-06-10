@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <openssl/sha.h>
 
 // Same encode_char as in encoder.c
 unsigned char encode_char(char c) {
@@ -103,20 +104,68 @@ char detect_delimiter_old(const char *line) {
     return delimiter;
 }
 
+// Helper to compute SHA-256 checksum and write as hex string to file
+int write_checksum(const char *input_filename, const char *output_filename) {
+    FILE *in = fopen(input_filename, "rb");
+    if (!in) return 1;
+    SHA256_CTX sha256;
+    SHA256_Init(&sha256);
+    unsigned char buf[32768];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), in)) > 0)
+        SHA256_Update(&sha256, buf, n);
+    fclose(in);
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    SHA256_Final(hash, &sha256);
+    FILE *out = fopen(output_filename, "w");
+    if (!out) return 2;
+    for (int i = 0; i < SHA256_DIGEST_LENGTH; i++)
+        fprintf(out, "%02x", hash[i]);
+    fprintf(out, "\n");
+    fclose(out);
+    return 0;
+}
+
 int main(int argc, char *argv[]) {
     if (argc != 2) {
         fprintf(stderr, "Usage: %s input.csv\n", argv[0]);
         return 1;
     }
 
-    FILE *in = fopen(argv[1], "r");
+    // Remove trailing slash if present
+    char input_path[512];
+    strncpy(input_path, argv[1], sizeof(input_path)-1);
+    input_path[sizeof(input_path)-1] = '\0';
+    size_t len = strlen(input_path);
+    while (len > 0 && (input_path[len-1] == '/' || input_path[len-1] == '\\')) {
+        input_path[len-1] = '\0';
+        len--;
+    }
+
+    // Check if input_path is a directory
+    FILE *test = fopen(input_path, "r");
+    if (!test) {
+        // Try to append a filename if a directory was given
+        char try_path[600];
+        snprintf(try_path, sizeof(try_path), "%s.csv", input_path);
+        test = fopen(try_path, "r");
+        if (!test) {
+            perror("Failed to open input CSV file");
+            return 1;
+        }
+        strncpy(input_path, try_path, sizeof(input_path)-1);
+        input_path[sizeof(input_path)-1] = '\0';
+    }
+    fclose(test);
+
+    FILE *in = fopen(input_path, "r");
     if (!in) {
         perror("Failed to open input CSV file");
         return 1;
     }
 
     char basename[256];
-    get_basename(basename, argv[1]);
+    get_basename(basename, input_path);
 
     // Create directory with csv name
     if (mkdir(basename) != 0 && errno != EEXIST) {
@@ -125,10 +174,18 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    char header_path[300], data_path[300], delim_path[300];
+    char header_path[300], data_path[300], delim_path[300], checksum_path[300];
     snprintf(header_path, sizeof(header_path), "%s/%s.header.txt", basename, basename);
     snprintf(data_path, sizeof(data_path), "%s/%s.data.txtd", basename, basename);
     snprintf(delim_path, sizeof(delim_path), "%s/%s.delimeter.txt", basename, basename);
+    snprintf(checksum_path, sizeof(checksum_path), "%s/%s.checksum.txt", basename, basename);
+
+    // Write checksum of original CSV file before encoding
+    if (write_checksum(input_path, checksum_path) != 0) {
+        fprintf(stderr, "Failed to write checksum file\n");
+        fclose(in);
+        return 1;
+    }
 
     FILE *header = NULL;
     FILE *data = fopen(data_path, "wb");
@@ -218,5 +275,6 @@ int main(int argc, char *argv[]) {
     printf("Delimiter stored at: %s\n", delim_path);
     printf("Header stored at: %s\n", header_path);
     printf("Encoded data stored at: %s\n", data_path);
+    printf("Checksum file stored at: %s\n", checksum_path);
     return 0;
 }
