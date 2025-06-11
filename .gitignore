@@ -10,3 +10,4 @@
 txtd-cuda/csv_to_txtd_cuda.cu
 txtd-cuda/txtd_to_csv_cuda.cu
 temp/
+SPECIFICATION.md
