@@ -123,13 +123,15 @@ Timing results for encoding and decoding `pi_digits.txt` (286MB):
 | Encode | 0.98s      | 3.49s                | 9.86s                  |
 | Decode | 5.75s      | 6.06s                | 11.22s                 |
 
-**NOTE:** The multithreaded CPU version is under internal development. It bridges the gap between CUDA acceleration and basic CPU processing, offering a strong middle ground for systems without a GPU.
 
-**Summary:**
-- **CUDA implementation** is significantly faster for encoding and decoding large files.
-- **File integrity** is verified in both implementations using SHA-256 hashes.
+Timing results for encoding and decoding `hw_201.csv` (17.1MB):
 
-*NOTE: The timings may change from system to system and based on many other variables like ambient temperature too. This comparison is here just to give a rough idea about performance boost in CUDA implementation against the Single-Threaded CPU implementation*
+| Step   | CPU (Single-threaded) | CPU (Multithreaded) |
+|--------|----------------------|------------------------|
+| Encode | 0.92s                | 0.54s                  |
+| Decode | 1.06s                | 0.39s                  |
+
+*NOTE: The timings may change from system to system and based on many other variables like ambient temperature too. This comparison is here just to give a rough idea about performance comparison among different implementations*
 
 ---
 
