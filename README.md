@@ -29,25 +29,11 @@ Additionally, a file comparison utility verifies the correctness of encoding and
   - [OpenSSL precompiled binaries](https://slproweb.com/products/Win32OpenSSL.html) (Win64 "Full" version recommended)
   - Add `C:\OpenSSL-Win64\bin` to your system `PATH` for runtime DLLs
 
+---
+
 ### Build
 
-#### Standard (CPU) tools
-
-```
-gcc -o encode encoder.c
-gcc -o decode decoder.c
-gcc -o compare_files compare_files.c -lssl -lcrypto
-```
-
-#### GPU-accelerated tools (CUDA)
-
-**On Windows (with OpenSSL in C:\OpenSSL-Win64):**
-```
-nvcc -I"C:\OpenSSL-Win64\include" -L"C:\OpenSSL-Win64\lib\VC\x64\MD" txt_to_txtd_cuda.cu -o txt_to_txtd_cuda.exe -llibssl -llibcrypto
-nvcc -I"C:\OpenSSL-Win64\include" -L"C:\OpenSSL-Win64\lib\VC\x64\MD" txtd_to_txt_cuda.cu -o txtd_to_txt_cuda.exe -llibssl -llibcrypto
-```
-
-*Adjust include/library paths if necessary.*
+The instructions to compile the files have been provided [here](https://github.com/atrithakar/project_txtd/blob/main/MDs/BUILD.md).
 
 ---
 
