@@ -63,7 +63,18 @@ int main(int argc, char *argv[]) {
     snprintf(encoded_path, sizeof(encoded_path), "%s/%s.encoded.txtd", basename, basename);
     snprintf(checksum_path, sizeof(checksum_path), "%s/%s.checksum.txt", basename, basename);
 
-    // Encode the input text file to a binary format
+    // Open output file for writing and write 00000000 + newline at the start
+    FILE *out = fopen(encoded_path, "wb");
+    if (!out) {
+        perror("Failed to create output file");
+        return 1;
+    }
+    unsigned char first = 0x00;
+    fwrite(&first, 1, 1, out);
+    fputc('\n', out);
+    fclose(out);
+
+    // Encode the input text file to a binary format (append to file)
     encode(argv[1], encoded_path);
 
     // Write checksum
