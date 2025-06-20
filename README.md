@@ -16,6 +16,8 @@ Additionally, a file comparison utility verifies the correctness of encoding and
 - **File verification:** Uses SHA-256 hashing to compare files and confirm exact matches.
 - **Command-line utilities:** Easy-to-use CLI tools for encoding, decoding, and file comparison.
 
+> **Note**: The **File Verification** feature (based on SHA-256 checksums) is currently included to assist during the development and testing phase. Once the tool has been sufficiently validated for consistent and reliable performance, this feature may be removed to further improve execution speed and reduce resource usage.
+
 ---
 
 ## Getting Started
