@@ -77,33 +77,6 @@ char detect_delimiter(const char *line) {
     return delimiter;
 }
 
-// Utility: detect delimiter from header line
-char detect_delimiter_old(const char *line) {
-    int counts[256] = {0};
-    int in_quote = 0;
-    for (size_t i = 0; line[i] && line[i] != '\n'; ++i) {
-        char c = line[i];
-        if (c == '"' || c == '\'') {
-            in_quote = !in_quote;
-            continue;
-        }
-        if (in_quote) continue;
-        // Ignore spaces, tabs, alphanumerics, dot
-        if (c == ' ' || c == '\t' || (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '.') continue;
-        counts[(unsigned char)c]++;
-    }
-    // Find the most frequent non-zero character
-    int max_count = 0;
-    char delimiter = ',';
-    for (int i = 0; i < 256; ++i) {
-        if (counts[i] > max_count) {
-            max_count = counts[i];
-            delimiter = (char)i;
-        }
-    }
-    return delimiter;
-}
-
 // Helper to compute SHA-256 checksum and write as hex string to file
 int write_checksum(const char *input_filename, const char *output_filename) {
     FILE *in = fopen(input_filename, "rb");
@@ -132,40 +105,14 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // Remove trailing slash if present
-    char input_path[512];
-    strncpy(input_path, argv[1], sizeof(input_path)-1);
-    input_path[sizeof(input_path)-1] = '\0';
-    size_t len = strlen(input_path);
-    while (len > 0 && (input_path[len-1] == '/' || input_path[len-1] == '\\')) {
-        input_path[len-1] = '\0';
-        len--;
-    }
-
-    // Check if input_path is a directory
-    FILE *test = fopen(input_path, "r");
-    if (!test) {
-        // Try to append a filename if a directory was given
-        char try_path[600];
-        snprintf(try_path, sizeof(try_path), "%s.csv", input_path);
-        test = fopen(try_path, "r");
-        if (!test) {
-            perror("Failed to open input CSV file");
-            return 1;
-        }
-        strncpy(input_path, try_path, sizeof(input_path)-1);
-        input_path[sizeof(input_path)-1] = '\0';
-    }
-    fclose(test);
-
-    FILE *in = fopen(input_path, "r");
+    FILE *in = fopen(argv[1], "r");
     if (!in) {
         perror("Failed to open input CSV file");
         return 1;
     }
 
     char basename[256];
-    get_basename(basename, input_path);
+    get_basename(basename, argv[1]);
 
     // Create directory with csv name
     if (mkdir(basename) != 0 && errno != EEXIST) {
@@ -174,63 +121,43 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    char header_path[300], data_path[300], delim_path[300], checksum_path[300];
-    snprintf(header_path, sizeof(header_path), "%s/%s.header.txt", basename, basename);
-    snprintf(data_path, sizeof(data_path), "%s/%s.data.txtd", basename, basename);
-    snprintf(delim_path, sizeof(delim_path), "%s/%s.delimeter.txt", basename, basename);
+    char txtd_path[300], checksum_path[300];
+    snprintf(txtd_path, sizeof(txtd_path), "%s/%s.txtd", basename, basename);
     snprintf(checksum_path, sizeof(checksum_path), "%s/%s.checksum.txt", basename, basename);
 
     // Write checksum of original CSV file before encoding
-    if (write_checksum(input_path, checksum_path) != 0) {
+    if (write_checksum(argv[1], checksum_path) != 0) {
         fprintf(stderr, "Failed to write checksum file\n");
         fclose(in);
         return 1;
     }
 
-    FILE *header = NULL;
-    FILE *data = fopen(data_path, "wb");
-    FILE *delim_file = NULL;
-    if (!data) {
-        perror("Failed to create data.txtd");
+    FILE *out = fopen(txtd_path, "wb");
+    if (!out) {
+        perror("Failed to create output txtd file");
         fclose(in);
         return 1;
     }
 
+    // Write first 8 bits as 1111 1111, then newline
+    unsigned char first = 0xFF; // 1111 1111
+    fwrite(&first, 1, 1, out);
+    fputc('\n', out);
+
+    // Read and write header (first line) as-is, then newline
     char line[8192];
-    int is_first_line = 1;
+    if (!fgets(line, sizeof(line), in)) {
+        fprintf(stderr, "Input CSV is empty.\n");
+        fclose(in); fclose(out);
+        return 1;
+    }
+    fputs(line, out);
+    if (line[strlen(line)-1] != '\n') fputc('\n', out); // ensure newline
+
+    // Now encode the rest of the file as usual
     int half = 0;
     unsigned char buffer = 0;
-    char delimiter = 0;
-
     while (fgets(line, sizeof(line), in)) {
-        if (is_first_line) {
-            delimiter = detect_delimiter(line);
-            // Write delimiter to file
-            delim_file = fopen(delim_path, "w");
-            if (!delim_file) {
-                perror("Failed to write delimiter");
-                fclose(in);
-                fclose(data);
-                return 1;
-            }
-            fputc(delimiter, delim_file);
-            fclose(delim_file);
-
-            // Write header as-is
-            header = fopen(header_path, "w");
-            if (!header) {
-                perror("Failed to write header");
-                fclose(in);
-                fclose(data);
-                return 1;
-            }
-            fputs(line, header);
-            fclose(header);
-
-            is_first_line = 0;
-            continue;  // skip header from encoding
-        }
-
         int in_quote = 0;
         for (size_t i = 0; i < strlen(line); ++i) {
             char c = line[i];
@@ -245,36 +172,31 @@ int main(int argc, char *argv[]) {
             if (val == 0xFF) {
                 fprintf(stderr, "Unexpected invalid character '%c' in line: %s\n", line[i], line);
                 fclose(in);
-                fclose(data);
+                fclose(out);
                 return 1;
             }
-
             if (half == 0) {
                 buffer = val << 4;
                 half = 1;
             } else {
                 buffer |= val;
-                fwrite(&buffer, 1, 1, data);
+                fwrite(&buffer, 1, 1, out);
                 half = 0;
             }
         }
     }
-
     if (half == 0) {
         buffer = 0b1111 << 4;
-        fwrite(&buffer, 1, 1, data);
+        fwrite(&buffer, 1, 1, out);
     } else {
         buffer |= 0b1111;
-        fwrite(&buffer, 1, 1, data);
+        fwrite(&buffer, 1, 1, out);
     }
 
     fclose(in);
-    fclose(data);
+    fclose(out);
 
     printf("Encoding complete.\n");
-    printf("Delimiter stored at: %s\n", delim_path);
-    printf("Header stored at: %s\n", header_path);
-    printf("Encoded data stored at: %s\n", data_path);
-    printf("Checksum file stored at: %s\n", checksum_path);
+    printf("Packed file stored at: %s\n", txtd_path);
     return 0;
 }
