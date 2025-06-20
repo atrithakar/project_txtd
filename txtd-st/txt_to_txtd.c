@@ -63,19 +63,49 @@ int main(int argc, char *argv[]) {
     snprintf(encoded_path, sizeof(encoded_path), "%s/%s.encoded.txtd", basename, basename);
     snprintf(checksum_path, sizeof(checksum_path), "%s/%s.checksum.txt", basename, basename);
 
-    // Open output file for writing and write 00000000 + newline at the start
+    // Open input and output files
+    FILE *in = fopen(argv[1], "r");
+    if (!in) {
+        perror("Failed to open input file");
+        return 1;
+    }
     FILE *out = fopen(encoded_path, "wb");
     if (!out) {
         perror("Failed to create output file");
+        fclose(in);
         return 1;
     }
+
+    // Write first byte as 00000000 and a newline
     unsigned char first = 0x00;
     fwrite(&first, 1, 1, out);
     fputc('\n', out);
-    fclose(out);
 
-    // Encode the input text file to a binary format (append to file)
-    encode(argv[1], encoded_path);
+    // Encode the input text file to a binary format (write directly after header)
+    unsigned char buffer = 0;
+    int half = 0;
+    int ch;
+    while ((ch = fgetc(in)) != EOF) {
+        unsigned char val = encode_char((char)ch);
+        if (half == 0) {
+            buffer = val << 4;
+            half = 1;
+        } else {
+            buffer |= val;
+            fwrite(&buffer, 1, 1, out);
+            half = 0;
+        }
+    }
+    if (half == 0) {
+        buffer = 0b1111 << 4;
+        fwrite(&buffer, 1, 1, out);
+    } else {
+        buffer |= 0b1111;
+        fwrite(&buffer, 1, 1, out);
+    }
+
+    fclose(in);
+    fclose(out);
 
     // Write checksum
     if (write_checksum(argv[1], checksum_path) != 0) {
