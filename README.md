@@ -39,51 +39,7 @@ The instructions to compile the files have been provided [here](https://github.c
 
 ## Usage
 
-### Encode a TXT file (CPU)
-```
-./txt_to_txtd.exe input.txt
-```
-
-### Encode a TXT file (GPU/CUDA)
-```
-./txt_to_txtd_cuda.exe input.txt
-```
-- Output: Creates a folder named after the input file (without extension), containing `.encoded.txtd` and `.checksum.txt`.
-
-### Decode a TXTD file into TXT file (CPU)
-```
-./txtd_to_txt.exe folder_name
-```
-
-### Decode a TXTD file into TXT file (GPU/CUDA)
-```
-./txtd_to_txt_cuda.exe folder_name
-```
-- Looks for `folder_name/folder_name.encoded.txtd`, decodes to `folder_name/folder_name_decoded.txt`, and verifies checksum with `folder_name/folder_name.checksum.txt`.
-
-### Encode a CSV file (only numerical data in the body and allowed delimiters)
-```
-./csv_to_txtd.exe csv_name.csv
-```
-
-### Decode a TXTD file into CSV file
-```
-./txtd_to_csv.exe csv_name
-```
-
-### Compare two files
-
-```
-./compare_files file1 file2
-```
-
-Output on success:
-
-Files are IDENTICAL
-
-Output on mismatch:
-
-Files are DIFFERENT
+The usage instructions have been provided [here](https://github.com/atrithakar/project_txtd/blob/main/MDs/USAGE.md).
 
 ---
 
@@ -118,30 +74,6 @@ Timing results for encoding and decoding `hw_201.csv` (17.1MB):
 | Decode | 1.06s                | 0.39s                  |
 
 *NOTE: The timings may change from system to system and based on many other variables like ambient temperature too. This comparison is here just to give a rough idea about performance comparison among different implementations*
-
----
-
-## Project Structure
-
-```
-.
-├── txtd-st/
-│   ├── encoder.c             # Encoder source code
-│   ├── decoder.c             # Decoder source code
-│   ├── compare_files.c       # File comparison
-│   ├── txt_to_txtd.c         # TXT to TXTD encoder
-│   ├── txtd_to_txt.c         # TXTD to TXT decoder
-│   ├── csv_to_txtd.c         # CSV to TXTD encoder
-│   └── txtd_to_csv.c         # TXTD to CSV decoder
-├── txtd-cuda/
-│   ├── txt_to_txtd_cuda.cu   # TXT to TXTD encoder (GPU Accelerated)
-│   └── txtd_to_txt_cuda.cu   # TXTD to TXT decoder (GPU Accelerated)
-├── mappings.txt              # Nibble-to-symbol mapping rules
-├── README.md                 # This file
-├── .gitignore
-└── ...
-
-```
 
 ---
 
