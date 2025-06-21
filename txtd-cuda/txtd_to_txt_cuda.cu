@@ -5,148 +5,146 @@
 #include <openssl/sha.h>
 #include <time.h>
 
-#define CHUNK_SIZE 2000
+#define THREADS_PER_BLOCK 256
 
 __device__ __constant__ char decode_table[16] = {
-    '0','1','2','3','4','5','6','7','8','9','.',' ','\t','\n',',','\0'
+    '0', '1', '2', '3', '4', '5', '6', '7',
+    '8', '9', '.', ' ', '\t', '\n', ',', '\0'
 };
 
-__global__ void decode_kernel(const unsigned char *in, char *out, size_t n_nibbles) {
-    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < n_nibbles) {
-        unsigned char nibble = (idx % 2 == 0) ? (in[idx/2] >> 4) & 0x0F : in[idx/2] & 0x0F;
-        out[idx] = decode_table[nibble];
-    }
+__global__ void decode_and_unpack_kernel(const unsigned char *in, char *out, size_t in_size, size_t expected_len) {
+    size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= in_size) return;
+
+    unsigned char byte = in[i];
+    unsigned char high = (byte >> 4) & 0x0F;
+    unsigned char low  = byte & 0x0F;
+
+    if (i * 2 < expected_len)
+        out[i * 2] = decode_table[high];
+    if (i * 2 + 1 < expected_len)
+        out[i * 2 + 1] = decode_table[low];
 }
 
-// Helper to compute SHA-256 checksum and write as hex string to buffer
-int compute_checksum(const char *filename, char *out_hex, size_t hex_size) {
-    FILE *in = fopen(filename, "rb");
-    if (!in) return 1;
-    SHA256_CTX sha256;
-    SHA256_Init(&sha256);
+int verify_checksum(const char *decoded_path, const char *checksum_path) {
+    // Read expected hash
+    FILE *checkf = fopen(checksum_path, "r");
+    if (!checkf) {
+        perror("open checksum");
+        return -1;
+    }
+
+    char expected[SHA256_DIGEST_LENGTH * 2 + 1];
+    if (!fgets(expected, sizeof(expected), checkf)) {
+        fclose(checkf);
+        return -1;
+    }
+    fclose(checkf);
+
+    // Calculate hash of decoded file
+    FILE *fp = fopen(decoded_path, "rb");
+    if (!fp) {
+        perror("open decoded");
+        return -1;
+    }
+
+    SHA256_CTX sha;
+    SHA256_Init(&sha);
     unsigned char buf[32768];
     size_t n;
-    while ((n = fread(buf, 1, sizeof(buf), in)) > 0)
-        SHA256_Update(&sha256, buf, n);
-    fclose(in);
-    unsigned char hash[SHA256_DIGEST_LENGTH];
-    SHA256_Final(hash, &sha256);
-    char *p = out_hex;
-    for (int i = 0; i < SHA256_DIGEST_LENGTH; i++)
-        p += snprintf(p, hex_size - (p - out_hex), "%02x", hash[i]);
-    *p = '\0';
-    return 0;
-}
-
-// Helper to read checksum from file (first line)
-int read_checksum(const char *filename, char *out_hex, size_t hex_size) {
-    FILE *in = fopen(filename, "r");
-    if (!in) return 1;
-    if (!fgets(out_hex, (int)hex_size, in)) {
-        fclose(in);
-        return 2;
+    while ((n = fread(buf, 1, sizeof(buf), fp)) > 0) {
+        SHA256_Update(&sha, buf, n);
     }
-    size_t len = strlen(out_hex);
-    if (len > 0 && out_hex[len-1] == '\n') out_hex[len-1] = '\0';
-    fclose(in);
-    return 0;
+    fclose(fp);
+
+    unsigned char hash_bin[SHA256_DIGEST_LENGTH];
+    SHA256_Final(hash_bin, &sha);
+
+    char actual[SHA256_DIGEST_LENGTH * 2 + 1];
+    for (int i = 0; i < SHA256_DIGEST_LENGTH; ++i)
+        sprintf(&actual[i * 2], "%02x", hash_bin[i]);
+    actual[SHA256_DIGEST_LENGTH * 2] = '\0';
+
+    return strcmp(expected, actual) == 0;
 }
 
 int main(int argc, char *argv[]) {
-    // Uncomment to enable timing
     clock_t start = clock();
 
     if (argc != 2) {
-        fprintf(stderr, "Usage: %s <folder_name>\n", argv[0]);
+        fprintf(stderr, "Usage: %s <folder_path>\n", argv[0]);
         return 1;
     }
-    char folder_in[512];
-    strncpy(folder_in, argv[1], sizeof(folder_in)-1);
-    folder_in[sizeof(folder_in)-1] = '\0';
 
-    // Remove trailing slash if present
-    size_t len = strlen(folder_in);
-    while (len > 0 && (folder_in[len-1] == '/' || folder_in[len-1] == '\\')) {
-        folder_in[len-1] = '\0';
-        len--;
-    }
-
-    // Extract basename (last component after / or \)
-    char *basename = folder_in;
-    char *slash = strrchr(folder_in, '/');
-    #ifdef _WIN32
-    char *bslash = strrchr(folder_in, '\\');
+    char *folder = argv[1];
+    char base[256];
+    const char *slash = strrchr(folder, '/');
+#ifdef _WIN32
+    const char *bslash = strrchr(folder, '\\');
     if (!slash || (bslash && bslash > slash)) slash = bslash;
-    #endif
-    if (slash) basename = slash + 1;
+#endif
+    const char *start_ptr = slash ? slash + 1 : folder;
+    strncpy(base, start_ptr, sizeof(base) - 1);
+    base[sizeof(base) - 1] = '\0';
 
-    char inpath[512], outpath[512], checksum_path[512];
-    snprintf(inpath, sizeof(inpath), "%s/%s.encoded.txtd", folder_in, basename);
-    snprintf(outpath, sizeof(outpath), "%s/%s_decoded.txt", folder_in, basename);
-    snprintf(checksum_path, sizeof(checksum_path), "%s/%s.checksum.txt", folder_in, basename);
+    char encoded_file[512], checksum_file[512], output_file[512];
+    snprintf(encoded_file, sizeof(encoded_file), "%s/%s.encoded.txtd", folder, base);
+    snprintf(checksum_file, sizeof(checksum_file), "%s/%s.checksum.txt", folder, base);
+    snprintf(output_file, sizeof(output_file), "%s/%s_decoded.txt", folder, base);
 
-    FILE *in = fopen(inpath, "rb");
-    if (!in) { perror("open input"); return 1; }
+    FILE *fin = fopen(encoded_file, "rb");
+    if (!fin) {
+        perror("open encoded");
+        return 1;
+    }
 
-    // Skip first two bytes (header and newline)
-    fgetc(in);
-    fgetc(in);
+    fseek(fin, 0, SEEK_END);
+    size_t total_size = ftell(fin);
+    fseek(fin, 2, SEEK_SET);  // Skip 0x00 + newline
 
-    // Read rest of file into buffer
-    fseek(in, 0, SEEK_END);
-    size_t n_bytes = ftell(in) - 2;
-    fseek(in, 2, SEEK_SET);
-    unsigned char *buf = (unsigned char*)malloc(n_bytes);
-    fread(buf, 1, n_bytes, in);
-    fclose(in);
+    size_t encoded_size = total_size - 2;
+    unsigned char *packed = (unsigned char *)malloc(encoded_size);
+    fread(packed, 1, encoded_size, fin);
+    fclose(fin);
 
-    size_t n_nibbles = n_bytes * 2;
-    char *d_out, *outbuf = (char*)malloc(n_nibbles);
+    size_t decoded_len = encoded_size * 2;
+    char *decoded = (char *)malloc(decoded_len);
+
     unsigned char *d_in;
-    cudaMalloc(&d_in, n_bytes);
-    cudaMalloc(&d_out, n_nibbles);
-    cudaMemcpy(d_in, buf, n_bytes, cudaMemcpyHostToDevice);
+    char *d_out;
+    cudaMalloc(&d_in, encoded_size);
+    cudaMalloc(&d_out, decoded_len);
+    cudaMemcpy(d_in, packed, encoded_size, cudaMemcpyHostToDevice);
 
-    int threads_per_block = 256;
-    int num_blocks = (n_nibbles + threads_per_block - 1) / threads_per_block;
-    decode_kernel<<<num_blocks, threads_per_block>>>(d_in, d_out, n_nibbles);
-    cudaMemcpy(outbuf, d_out, n_nibbles, cudaMemcpyDeviceToHost);
+    int blocks = (encoded_size + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+    decode_and_unpack_kernel<<<blocks, THREADS_PER_BLOCK>>>(d_in, d_out, encoded_size, decoded_len);
 
-    // Write output, stop at first '\0'
-    FILE *out = fopen(outpath, "w");
-    for (size_t i = 0; i < n_nibbles; ++i) {
-        if (outbuf[i] == '\0') break;
-        fputc(outbuf[i], out);
-    }
-    fclose(out);
+    cudaMemcpy(decoded, d_out, decoded_len, cudaMemcpyDeviceToHost);
+    cudaFree(d_in);
+    cudaFree(d_out);
+    free(packed);
 
-    cudaFree(d_in); cudaFree(d_out); free(buf); free(outbuf);
-
-    // Compute checksum of decoded file
-    char decoded_checksum[SHA256_DIGEST_LENGTH*2+1];
-    if (compute_checksum(outpath, decoded_checksum, sizeof(decoded_checksum)) != 0) {
-        fprintf(stderr, "Failed to compute checksum for %s\n", outpath);
+    FILE *fout = fopen(output_file, "wb");
+    if (!fout) {
+        perror("open output");
+        free(decoded);
         return 1;
     }
+    fwrite(decoded, 1, decoded_len, fout);
+    fclose(fout);
+    free(decoded);
 
-    // Read original checksum
-    char original_checksum[SHA256_DIGEST_LENGTH*2+1];
-    if (read_checksum(checksum_path, original_checksum, sizeof(original_checksum)) != 0) {
-        fprintf(stderr, "Failed to read checksum file %s\n", checksum_path);
-        return 1;
-    }
-
-    // Compare checksums
-    if (strcmp(decoded_checksum, original_checksum) == 0) {
+    printf("Decoded to: %s\n", output_file);
+    int verified = verify_checksum(output_file, checksum_file);
+    if (verified == 1) {
         printf("Decoding completed successfully. The decoded file matches the original checksum.\n");
+    } else if (verified == 0) {
+        printf("Decoding completed, but the decoded file does NOT match the original checksum.\n");
     } else {
-        printf("Decoding completed, but the decoded file does NOT match the original checksum. Please verify the integrity of your files.\n");
+        printf("Checksum verification failed due to file access error.\n");
     }
 
-    // Uncomment to enable timing
     clock_t end = clock();
     printf("Elapsed: %.3fs\n", (double)(end - start) / CLOCKS_PER_SEC);
-
     return 0;
 }
