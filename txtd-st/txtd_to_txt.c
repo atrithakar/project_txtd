@@ -3,6 +3,7 @@
 #include <string.h>
 #include <openssl/sha.h>
 #include "decoder.c"
+#include <time.h>
 
 // Helper to compute SHA-256 checksum and write as hex string to buffer
 int compute_checksum(const char *filename, char *out_hex, size_t hex_size) {
@@ -40,6 +41,10 @@ int read_checksum(const char *filename, char *out_hex, size_t hex_size) {
 }
 
 int main(int argc, char *argv[]) {
+
+    // Uncomment to enable timing
+    clock_t start = clock();
+
     if (argc != 2) {
         fprintf(stderr, "Usage: %s <folder_name>\n", argv[0]);
         return 1;
@@ -56,24 +61,36 @@ int main(int argc, char *argv[]) {
     snprintf(checksum_path, sizeof(checksum_path), "%s/%s.checksum.txt", folder, basename);
     snprintf(decoded_path, sizeof(decoded_path), "%s/%s_decoded.txt", folder, basename);
 
-    // Open encoded file and skip first byte and newline
+    // Open encoded file and skip first two bytes, then decode and write output
     FILE *in = fopen(encoded_path, "rb");
     if (!in) {
         perror("Failed to open encoded file");
         return 1;
     }
-    // Skip first byte and newline
-    fgetc(in);
-    int c = fgetc(in);
-    if (c == EOF) {
+    FILE *out = fopen(decoded_path, "w");
+    if (!out) {
+        perror("Failed to create output file");
         fclose(in);
-        fprintf(stderr, "Encoded file too short.\n");
         return 1;
     }
-    fclose(in);
+    // Skip first two bytes (header and newline)
+    fgetc(in);
+    fgetc(in);
 
-    // Decode the input binary file to a text format (decoder.c will reopen file)
-    decode(encoded_path, decoded_path);
+    // Decode the rest of the file
+    unsigned char byte;
+    while (fread(&byte, 1, 1, in) == 1) {
+        unsigned char high = (byte >> 4) & 0x0F;
+        unsigned char low  = byte & 0x0F;
+
+        if (high == 0b1111) break;
+        fputc(decode_nibble(high), out);
+
+        if (low == 0b1111) break;
+        fputc(decode_nibble(low), out);
+    }
+    fclose(in);
+    fclose(out);
 
     // Compute checksum of decoded file
     char decoded_checksum[SHA256_DIGEST_LENGTH*2+1];
@@ -95,5 +112,10 @@ int main(int argc, char *argv[]) {
     } else {
         printf("Decoding completed, but the decoded file does NOT match the original checksum. Please verify the integrity of your files.\n");
     }
+
+    // Uncomment to enable timing
+    clock_t end = clock();
+    printf("Elapsed: %.3fs\n", (double)(end - start) / CLOCKS_PER_SEC);
+
     return 0;
 }
