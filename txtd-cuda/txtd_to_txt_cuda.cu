@@ -3,23 +3,19 @@
 #include <string.h>
 #include <cuda_runtime.h>
 #include <openssl/sha.h>
+#include <time.h>
 
-#define CHUNK_SIZE 2000  // Number of nibbles per GPU thread (change as needed)
+#define CHUNK_SIZE 2000
 
-// Device decode table
 __device__ __constant__ char decode_table[16] = {
     '0','1','2','3','4','5','6','7','8','9','.',' ','\t','\n',',','\0'
 };
 
 __global__ void decode_kernel(const unsigned char *in, char *out, size_t n_nibbles) {
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-    size_t start = idx * CHUNK_SIZE;
-    size_t end = start + CHUNK_SIZE;
-    if (start >= n_nibbles) return;
-    if (end > n_nibbles) end = n_nibbles;
-    for (size_t i = start; i < end; ++i) {
-        unsigned char nibble = (i % 2 == 0) ? (in[i/2] >> 4) & 0x0F : in[i/2] & 0x0F;
-        out[i] = decode_table[nibble];
+    if (idx < n_nibbles) {
+        unsigned char nibble = (idx % 2 == 0) ? (in[idx/2] >> 4) & 0x0F : in[idx/2] & 0x0F;
+        out[idx] = decode_table[nibble];
     }
 }
 
@@ -51,7 +47,6 @@ int read_checksum(const char *filename, char *out_hex, size_t hex_size) {
         fclose(in);
         return 2;
     }
-    // Remove trailing newline if present
     size_t len = strlen(out_hex);
     if (len > 0 && out_hex[len-1] == '\n') out_hex[len-1] = '\0';
     fclose(in);
@@ -59,6 +54,9 @@ int read_checksum(const char *filename, char *out_hex, size_t hex_size) {
 }
 
 int main(int argc, char *argv[]) {
+    // Uncomment to enable timing
+    clock_t start = clock();
+
     if (argc != 2) {
         fprintf(stderr, "Usage: %s <folder_name>\n", argv[0]);
         return 1;
@@ -90,9 +88,15 @@ int main(int argc, char *argv[]) {
 
     FILE *in = fopen(inpath, "rb");
     if (!in) { perror("open input"); return 1; }
+
+    // Skip first two bytes (header and newline)
+    fgetc(in);
+    fgetc(in);
+
+    // Read rest of file into buffer
     fseek(in, 0, SEEK_END);
-    size_t n_bytes = ftell(in);
-    fseek(in, 0, SEEK_SET);
+    size_t n_bytes = ftell(in) - 2;
+    fseek(in, 2, SEEK_SET);
     unsigned char *buf = (unsigned char*)malloc(n_bytes);
     fread(buf, 1, n_bytes, in);
     fclose(in);
@@ -100,12 +104,12 @@ int main(int argc, char *argv[]) {
     size_t n_nibbles = n_bytes * 2;
     char *d_out, *outbuf = (char*)malloc(n_nibbles);
     unsigned char *d_in;
-    cudaMalloc(&d_in, n_bytes); cudaMalloc(&d_out, n_nibbles);
+    cudaMalloc(&d_in, n_bytes);
+    cudaMalloc(&d_out, n_nibbles);
     cudaMemcpy(d_in, buf, n_bytes, cudaMemcpyHostToDevice);
 
     int threads_per_block = 256;
-    int num_threads = (n_nibbles + CHUNK_SIZE - 1) / CHUNK_SIZE;
-    int num_blocks = (num_threads + threads_per_block - 1) / threads_per_block;
+    int num_blocks = (n_nibbles + threads_per_block - 1) / threads_per_block;
     decode_kernel<<<num_blocks, threads_per_block>>>(d_in, d_out, n_nibbles);
     cudaMemcpy(outbuf, d_out, n_nibbles, cudaMemcpyDeviceToHost);
 
@@ -139,5 +143,10 @@ int main(int argc, char *argv[]) {
     } else {
         printf("Decoding completed, but the decoded file does NOT match the original checksum. Please verify the integrity of your files.\n");
     }
+
+    // Uncomment to enable timing
+    clock_t end = clock();
+    printf("Elapsed: %.3fs\n", (double)(end - start) / CLOCKS_PER_SEC);
+
     return 0;
 }

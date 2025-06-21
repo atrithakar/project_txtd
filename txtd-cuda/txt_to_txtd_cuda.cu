@@ -4,6 +4,7 @@
 #include <sys/stat.h>
 #include <cuda_runtime.h>
 #include <openssl/sha.h>
+#include <time.h>
 
 #if defined(_WIN32)
 #include <direct.h>
@@ -55,6 +56,9 @@ int write_checksum(const char *input_filename, const char *output_filename) {
 }
 
 int main(int argc, char *argv[]) {
+    // Uncomment to enable timing
+    clock_t clock_start = clock();
+
     if (argc != 2) {
         fprintf(stderr, "Usage: %s <input.txt>\n", argv[0]);
         return 1;
@@ -83,15 +87,21 @@ int main(int argc, char *argv[]) {
     size_t n = ftell(in);
     fseek(in, 0, SEEK_SET);
 
-    char *buf;
-    cudaMallocHost(&buf, n);
+    char *buf = (char*)malloc(n);
     fread(buf, 1, n, in);
     fclose(in);
 
-    unsigned char *d_out, *out;
-    char *d_in;
-    size_t out_size = (n + 1) / 2;
+    // Open output file and write 0x00 and newline
+    FILE *fout = fopen(outpath, "wb");
+    if (!fout) { perror("open output"); free(buf); return 1; }
+    unsigned char first = 0x00;
+    fwrite(&first, 1, 1, fout);
+    fputc('\n', fout);
 
+    // GPU encode and pack
+    char *d_in;
+    unsigned char *d_out;
+    size_t out_size = (n + 1) / 2;
     cudaMalloc(&d_in, n);
     cudaMalloc(&d_out, out_size);
     cudaMemcpy(d_in, buf, n, cudaMemcpyHostToDevice);
@@ -104,18 +114,21 @@ int main(int argc, char *argv[]) {
     int blocks = (num_threads + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
     encode_and_pack_kernel<<<blocks, THREADS_PER_BLOCK>>>(d_in, d_out, n);
 
-    cudaMallocHost(&out, out_size);
+    unsigned char *out = (unsigned char*)malloc(out_size);
     cudaMemcpy(out, d_out, out_size, cudaMemcpyDeviceToHost);
 
-    FILE *fout = fopen(outpath, "wb");
     fwrite(out, 1, out_size, fout);
     fclose(fout);
 
     write_checksum(input_path, checksum_path);
 
-    cudaFree(d_in); cudaFree(d_out);
-    cudaFreeHost(buf); cudaFreeHost(out);
+    cudaFree(d_in); cudaFree(d_out); free(buf); free(out);
 
     printf("Encoded file: %s\nChecksum file: %s\n", outpath, checksum_path);
+
+    // Uncomment to enable timing
+    clock_t clock_end = clock();
+    printf("Elapsed: %.3fs\n", (double)(clock_end - clock_start) / CLOCKS_PER_SEC);
+
     return 0;
 }
