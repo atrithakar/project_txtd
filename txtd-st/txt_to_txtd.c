@@ -4,6 +4,7 @@
 #include <sys/stat.h>
 #include <openssl/sha.h>
 #include "encoder.c"
+#include <time.h>
 
 // Helper to extract base name (without extension)
 void get_basename(const char *filename, char *basename, size_t size) {
@@ -43,6 +44,9 @@ int write_checksum(const char *input_filename, const char *output_filename) {
 }
 
 int main(int argc, char *argv[]) {
+    // Uncomment to enable timing
+    clock_t start = clock();
+
     if (argc != 2) {
         fprintf(stderr, "Usage: %s <input.txt>\n", argv[0]);
         return 1;
@@ -114,5 +118,10 @@ int main(int argc, char *argv[]) {
     }
 
     printf("Encoded file: %s\nChecksum file: %s\n", encoded_path, checksum_path);
+
+    // Uncomment to enable timing
+    clock_t end = clock();
+    printf("Elapsed: %.3fs\n", (double)(end - start) / CLOCKS_PER_SEC);
+
     return 0;
 }
