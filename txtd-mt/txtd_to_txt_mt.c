@@ -3,7 +3,6 @@
 #include <string.h>
 #include <openssl/sha.h>
 #include <time.h>
-#include "decoder_mt.c"
 #include <omp.h>
 
 // Map 4-bit value to character
