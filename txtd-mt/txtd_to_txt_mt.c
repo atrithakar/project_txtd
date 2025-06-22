@@ -5,6 +5,8 @@
 #include <time.h>
 #include <omp.h>
 
+#define WRITE_BUFFER_SIZE 65536  // 64KB output buffer
+
 // Map 4-bit value to character
 char decode_nibble(unsigned char nibble) {
     switch (nibble) {
@@ -42,30 +44,42 @@ void decode_mt(const char *input_filename, const char *output_filename) {
     fclose(in);
 
     char *outbuf = (char*)malloc(n * 2);
-    size_t outlen = 0;
 
     #pragma omp parallel for
     for (size_t i = 0; i < n; ++i) {
         unsigned char high = (buf[i] >> 4) & 0x0F;
         unsigned char low  = buf[i] & 0x0F;
-        if (high != 0xF) outbuf[i*2] = decode_nibble(high);
-        else outbuf[i*2] = '\0';
-        if (low != 0xF) outbuf[i*2+1] = decode_nibble(low);
-        else outbuf[i*2+1] = '\0';
+        outbuf[i * 2]     = (high != 0xF) ? decode_nibble(high) : '\0';
+        outbuf[i * 2 + 1] = (low  != 0xF) ? decode_nibble(low)  : '\0';
     }
 
     FILE *out = fopen(output_filename, "w");
+    if (!out) { perror("Failed to open output file"); exit(EXIT_FAILURE); }
+
+    char write_buffer[WRITE_BUFFER_SIZE];
+    size_t buf_index = 0;
+
     for (size_t i = 0; i < n * 2; ++i) {
         if (outbuf[i] == '\0') break;
-        fputc(outbuf[i], out);
+        write_buffer[buf_index++] = outbuf[i];
+        if (buf_index == WRITE_BUFFER_SIZE) {
+            fwrite(write_buffer, 1, buf_index, out);
+            buf_index = 0;
+        }
     }
-    fclose(out);
 
-    free(buf); free(outbuf);
+    if (buf_index > 0) {
+        fwrite(write_buffer, 1, buf_index, out);
+    }
+
+    fclose(out);
+    free(buf);
+    free(outbuf);
+
     printf("Decoded to %s\n", output_filename);
 }
 
-// Helper to compute SHA-256 checksum and write as hex string to buffer
+// Compute SHA-256 checksum of file to hex
 int compute_checksum(const char *filename, char *out_hex, size_t hex_size) {
     FILE *in = fopen(filename, "rb");
     if (!in) return 1;
@@ -85,7 +99,7 @@ int compute_checksum(const char *filename, char *out_hex, size_t hex_size) {
     return 0;
 }
 
-// Helper to read checksum from file (first line)
+// Read checksum from file
 int read_checksum(const char *filename, char *out_hex, size_t hex_size) {
     FILE *in = fopen(filename, "r");
     if (!in) return 1;
@@ -94,13 +108,12 @@ int read_checksum(const char *filename, char *out_hex, size_t hex_size) {
         return 2;
     }
     size_t len = strlen(out_hex);
-    if (len > 0 && out_hex[len-1] == '\n') out_hex[len-1] = '\0';
+    if (len > 0 && out_hex[len - 1] == '\n') out_hex[len - 1] = '\0';
     fclose(in);
     return 0;
 }
 
 int main(int argc, char *argv[]) {
-    // Uncomment to enable timing
     clock_t start = clock();
 
     if (argc != 2) {
@@ -111,8 +124,8 @@ int main(int argc, char *argv[]) {
     char *folder = argv[1];
     char encoded_path[512], checksum_path[512], decoded_path[512], basename[256];
 
-    strncpy(basename, folder, sizeof(basename)-1);
-    basename[sizeof(basename)-1] = '\0';
+    strncpy(basename, folder, sizeof(basename) - 1);
+    basename[sizeof(basename) - 1] = '\0';
 
     snprintf(encoded_path, sizeof(encoded_path), "%s/%s.encoded.txtd", folder, basename);
     snprintf(checksum_path, sizeof(checksum_path), "%s/%s.checksum.txt", folder, basename);
@@ -120,13 +133,13 @@ int main(int argc, char *argv[]) {
 
     decode_mt(encoded_path, decoded_path);
 
-    char decoded_checksum[SHA256_DIGEST_LENGTH*2+1];
+    char decoded_checksum[SHA256_DIGEST_LENGTH * 2 + 1];
     if (compute_checksum(decoded_path, decoded_checksum, sizeof(decoded_checksum)) != 0) {
         fprintf(stderr, "Failed to compute checksum for %s\n", decoded_path);
         return 1;
     }
 
-    char original_checksum[SHA256_DIGEST_LENGTH*2+1];
+    char original_checksum[SHA256_DIGEST_LENGTH * 2 + 1];
     if (read_checksum(checksum_path, original_checksum, sizeof(original_checksum)) != 0) {
         fprintf(stderr, "Failed to read checksum file %s\n", checksum_path);
         return 1;
@@ -138,7 +151,6 @@ int main(int argc, char *argv[]) {
         printf("Decoding completed, but the decoded file does NOT match the original checksum. Please verify the integrity of your files.\n");
     }
 
-    // Uncomment to enable timing
     clock_t end = clock();
     printf("Elapsed: %.3fs\n", (double)(end - start) / CLOCKS_PER_SEC);
 

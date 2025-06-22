@@ -6,6 +6,8 @@
 #include <time.h>
 #include <omp.h>
 
+#define BUFFER_SIZE 65536  // 64KB output buffer
+
 // Map character to 4-bit code
 unsigned char encode_char(char c) {
     switch (c) {
@@ -50,17 +52,46 @@ void encode_mt(const char *input_filename, const char *output_filename) {
     }
 
     FILE *out = fopen(output_filename, "wb");
+    if (!out) { perror("Failed to open output file"); exit(EXIT_FAILURE); }
+
     unsigned char byte = 0;
     int half = 0;
-    for (size_t i = 0; i < n; ++i) {
-        if (half == 0) { byte = codes[i] << 4; half = 1; }
-        else { byte |= codes[i]; fwrite(&byte, 1, 1, out); half = 0; }
-    }
-    if (half == 0) { byte = 0b1111 << 4; fwrite(&byte, 1, 1, out); }
-    else { byte |= 0b1111; fwrite(&byte, 1, 1, out); }
-    fclose(out);
+    unsigned char out_buf[BUFFER_SIZE];
+    size_t buf_index = 0;
 
-    free(buf); free(codes);
+    for (size_t i = 0; i < n; ++i) {
+        if (half == 0) {
+            byte = codes[i] << 4;
+            half = 1;
+        } else {
+            byte |= codes[i];
+            out_buf[buf_index++] = byte;
+            half = 0;
+
+            if (buf_index == BUFFER_SIZE) {
+                fwrite(out_buf, 1, BUFFER_SIZE, out);
+                buf_index = 0;
+            }
+        }
+    }
+
+    // Handle last nibble
+    if (half == 0) {
+        byte = 0b1111 << 4;
+    } else {
+        byte |= 0b1111;
+    }
+    out_buf[buf_index++] = byte;
+
+    // Flush remaining buffer
+    if (buf_index > 0) {
+        fwrite(out_buf, 1, buf_index, out);
+    }
+
+    fclose(out);
+    free(buf);
+    free(codes);
+
     printf("Encoded to %s\n", output_filename);
 }
 
