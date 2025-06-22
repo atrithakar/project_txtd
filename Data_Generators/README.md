@@ -38,7 +38,7 @@ gcc generate_1gb_csv_data.c -o gen_csv
 ./gen_csv
 ```
 
-3. **Use the output** with any of the `txtd` encoders (OpenMP or CUDA), then decode and verify correctness using the checksums.
+3. **Use the output** with any of the `txtd` encoders (ST, MT, or CUDA), then decode and verify correctness using the checksums.
 
 ---
 
