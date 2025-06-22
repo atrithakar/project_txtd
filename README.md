@@ -77,6 +77,8 @@ Timing results for encoding and decoding `hw_201.csv` (17.1MB):
 
 *NOTE: The timings may change from system to system and based on many other variables like ambient temperature too. This comparison is here just to give a rough idea about performance comparison among different implementations*
 
+**For more detailed benchmarks, [click here](https://github.com/atrithakar/project_txtd/blob/main/MDs/BENCHMARKS.md).**
+
 ---
 
 ## License
