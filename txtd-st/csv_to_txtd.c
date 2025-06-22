@@ -4,6 +4,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <openssl/sha.h>
+#include <time.h>
 
 // Same encode_char as in encoder.c
 unsigned char encode_char(char c) {
@@ -100,6 +101,9 @@ int write_checksum(const char *input_filename, const char *output_filename) {
 }
 
 int main(int argc, char *argv[]) {
+    // Uncomment to enable timing
+    clock_t start = clock();
+
     if (argc != 2) {
         fprintf(stderr, "Usage: %s input.csv\n", argv[0]);
         return 1;
@@ -198,5 +202,10 @@ int main(int argc, char *argv[]) {
 
     printf("Encoding complete.\n");
     printf("Packed file stored at: %s\n", txtd_path);
+
+    // Uncomment to enable timing
+    clock_t end = clock();
+    printf("Elapsed: %.3fs\n", (double)(end - start) / CLOCKS_PER_SEC);
+
     return 0;
 }

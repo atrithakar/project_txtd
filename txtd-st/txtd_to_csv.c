@@ -3,6 +3,7 @@
 #include <string.h>
 #include <errno.h>
 #include <openssl/sha.h>
+#include <time.h>
 
 // Same decode_nibble as in decoder.c
 char decode_nibble(unsigned char nibble) {
@@ -90,6 +91,10 @@ char infer_delimiter(const char *line) {
 }
 
 int main(int argc, char *argv[]) {
+
+    // Uncomment to enable timing
+    clock_t start = clock();
+
     if (argc != 2) {
         fprintf(stderr, "Usage: %s <folder>\n", argv[0]);
         return 1;
@@ -199,5 +204,10 @@ int main(int argc, char *argv[]) {
     } else {
         printf("Decoding completed, but the decoded CSV does NOT match the original checksum. Please verify the integrity of your files.\n");
     }
+
+    // Uncomment to enable timing
+    clock_t end = clock();
+    double elapsed = (double)(end - start) / CLOCKS_PER_SEC;
+    printf("Elapsed: %.3fs\n", elapsed);
     return 0;
 }
