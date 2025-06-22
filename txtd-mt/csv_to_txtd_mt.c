@@ -7,6 +7,8 @@
 #include <omp.h>
 #include <time.h>
 
+#define WRITE_BUFFER_SIZE 65536  // 64KB output buffer
+
 // Map character to 4-bit code
 unsigned char encode_char(char c) {
     switch (c) {
@@ -98,7 +100,6 @@ int write_checksum(const char *input_filename, const char *output_filename) {
 }
 
 int main(int argc, char *argv[]) {
-    // Uncomment to enable timing
     clock_t start = clock();
 
     if (argc != 2) {
@@ -106,7 +107,6 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // Remove trailing slash if present
     char input_path[512];
     strncpy(input_path, argv[1], sizeof(input_path)-1);
     input_path[sizeof(input_path)-1] = '\0';
@@ -116,7 +116,6 @@ int main(int argc, char *argv[]) {
         len--;
     }
 
-    // Check if input_path is a directory
     FILE *test = fopen(input_path, "r");
     if (!test) {
         char try_path[600];
@@ -152,7 +151,6 @@ int main(int argc, char *argv[]) {
     snprintf(delim_path, sizeof(delim_path), "%s/%s.delimeter.txt", basename, basename);
     snprintf(checksum_path, sizeof(checksum_path), "%s/%s.checksum.txt", basename, basename);
 
-    // Write checksum of original CSV file before encoding
     if (write_checksum(input_path, checksum_path) != 0) {
         fprintf(stderr, "Failed to write checksum file\n");
         fclose(in);
@@ -168,6 +166,9 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    unsigned char *write_buffer = (unsigned char*)malloc(WRITE_BUFFER_SIZE);
+    size_t write_pos = 0;
+
     char line[8192];
     int is_first_line = 1;
     int half = 0;
@@ -177,7 +178,6 @@ int main(int argc, char *argv[]) {
     while (fgets(line, sizeof(line), in)) {
         if (is_first_line) {
             delimiter = detect_delimiter(line);
-            // Write delimiter to file
             delim_file = fopen(delim_path, "w");
             if (!delim_file) {
                 perror("Failed to write delimiter");
@@ -188,7 +188,6 @@ int main(int argc, char *argv[]) {
             fputc(delimiter, delim_file);
             fclose(delim_file);
 
-            // Write header as-is
             header = fopen(header_path, "w");
             if (!header) {
                 perror("Failed to write header");
@@ -200,21 +199,13 @@ int main(int argc, char *argv[]) {
             fclose(header);
 
             is_first_line = 0;
-            continue;  // skip header from encoding
+            continue;
         }
 
         int in_quote = 0;
         size_t len_line = strlen(line);
-        unsigned char *vals = (unsigned char*)malloc(len_line);
-        // Parallelize only the encoding step, not file I/O or quote logic
-        #pragma omp parallel for
         for (size_t i = 0; i < len_line; ++i) {
             char c = line[i];
-            // Quotes and in_quote logic must be handled serially, so we do it outside parallel region
-            vals[i] = c;
-        }
-        for (size_t i = 0; i < len_line; ++i) {
-            char c = vals[i];
             if (c == '"' || c == '\'') {
                 in_quote = !in_quote;
             }
@@ -226,7 +217,7 @@ int main(int argc, char *argv[]) {
                 fprintf(stderr, "Unexpected invalid character '%c' in line: %s\n", line[i], line);
                 fclose(in);
                 fclose(data);
-                free(vals);
+                free(write_buffer);
                 return 1;
             }
             if (half == 0) {
@@ -234,23 +225,30 @@ int main(int argc, char *argv[]) {
                 half = 1;
             } else {
                 buffer |= val;
-                fwrite(&buffer, 1, 1, data);
+                write_buffer[write_pos++] = buffer;
+                if (write_pos == WRITE_BUFFER_SIZE) {
+                    fwrite(write_buffer, 1, WRITE_BUFFER_SIZE, data);
+                    write_pos = 0;
+                }
                 half = 0;
             }
         }
-        free(vals);
     }
 
     if (half == 0) {
         buffer = 0b1111 << 4;
-        fwrite(&buffer, 1, 1, data);
+        write_buffer[write_pos++] = buffer;
     } else {
         buffer |= 0b1111;
-        fwrite(&buffer, 1, 1, data);
+        write_buffer[write_pos++] = buffer;
+    }
+    if (write_pos > 0) {
+        fwrite(write_buffer, 1, write_pos, data);
     }
 
     fclose(in);
     fclose(data);
+    free(write_buffer);
 
     printf("Encoding complete.\n");
     printf("Delimiter stored at: %s\n", delim_path);
@@ -258,7 +256,6 @@ int main(int argc, char *argv[]) {
     printf("Encoded data stored at: %s\n", data_path);
     printf("Checksum file stored at: %s\n", checksum_path);
 
-    // Uncomment to enable timing
     clock_t end = clock();
     printf("Elapsed: %.3fs\n", (double)(end - start) / CLOCKS_PER_SEC);
 
