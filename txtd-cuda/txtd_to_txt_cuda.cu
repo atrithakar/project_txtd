@@ -98,28 +98,53 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    // Skip first two bytes (header and newline)
+    fgetc(fin);
+    fgetc(fin);
+
     fseek(fin, 0, SEEK_END);
     size_t total_size = ftell(fin);
-    fseek(fin, 2, SEEK_SET);  // Skip 0x00 + newline
-
     size_t encoded_size = total_size - 2;
+    fseek(fin, 2, SEEK_SET);
+
     unsigned char *packed = (unsigned char *)malloc(encoded_size);
     fread(packed, 1, encoded_size, fin);
     fclose(fin);
 
-    size_t decoded_len = encoded_size * 2;
-    char *decoded = (char *)malloc(decoded_len);
+    // Calculate the actual number of nibbles (characters) to decode
+    // Find the position of the end marker (0xF nibble)
+    size_t n_nibbles = encoded_size * 2;
+    size_t actual_nibbles = n_nibbles;
+    int found_end = 0;
+    for (size_t i = 0; i < encoded_size; ++i) {
+        unsigned char byte = packed[i];
+        unsigned char high = (byte >> 4) & 0x0F;
+        unsigned char low  = byte & 0x0F;
+        if (!found_end && high == 0xF) {
+            actual_nibbles = i * 2;
+            found_end = 1;
+            break;
+        }
+        if (!found_end && low == 0xF) {
+            actual_nibbles = i * 2 + 1;
+            found_end = 1;
+            break;
+        }
+    }
+    if (!found_end) actual_nibbles = n_nibbles;
+
+    char *decoded = (char *)malloc(actual_nibbles);
 
     unsigned char *d_in;
     char *d_out;
     cudaMalloc(&d_in, encoded_size);
-    cudaMalloc(&d_out, decoded_len);
+    cudaMalloc(&d_out, n_nibbles);
     cudaMemcpy(d_in, packed, encoded_size, cudaMemcpyHostToDevice);
 
     int blocks = (encoded_size + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
-    decode_and_unpack_kernel<<<blocks, THREADS_PER_BLOCK>>>(d_in, d_out, encoded_size, decoded_len);
+    decode_and_unpack_kernel<<<blocks, THREADS_PER_BLOCK>>>(d_in, d_out, encoded_size, n_nibbles);
 
-    cudaMemcpy(decoded, d_out, decoded_len, cudaMemcpyDeviceToHost);
+    cudaMemcpy(decoded, d_out, actual_nibbles, cudaMemcpyDeviceToHost);
     cudaFree(d_in);
     cudaFree(d_out);
     free(packed);
@@ -130,7 +155,7 @@ int main(int argc, char *argv[]) {
         free(decoded);
         return 1;
     }
-    fwrite(decoded, 1, decoded_len, fout);
+    fwrite(decoded, 1, actual_nibbles, fout);
     fclose(fout);
     free(decoded);
 
