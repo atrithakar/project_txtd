@@ -35,9 +35,14 @@ char decode_nibble(unsigned char nibble) {
 void decode_mt(const char *input_filename, const char *output_filename) {
     FILE *in = fopen(input_filename, "rb");
     if (!in) { perror("Failed to open input file"); exit(EXIT_FAILURE); }
+
+    // Skip first two bytes (header and newline)
+    fgetc(in);
+    fgetc(in);
+
     fseek(in, 0, SEEK_END);
-    size_t n = ftell(in);
-    fseek(in, 0, SEEK_SET);
+    size_t n = ftell(in) - 2;
+    fseek(in, 2, SEEK_SET);
 
     unsigned char *buf = (unsigned char*)malloc(n);
     fread(buf, 1, n, in);

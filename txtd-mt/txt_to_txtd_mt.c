@@ -54,6 +54,11 @@ void encode_mt(const char *input_filename, const char *output_filename) {
     FILE *out = fopen(output_filename, "wb");
     if (!out) { perror("Failed to open output file"); exit(EXIT_FAILURE); }
 
+    // Write first byte as 00000000 and a newline
+    unsigned char first = 0x00;
+    fwrite(&first, 1, 1, out);
+    fputc('\n', out);
+
     unsigned char byte = 0;
     int half = 0;
     unsigned char out_buf[BUFFER_SIZE];
