@@ -21,7 +21,6 @@
 | **Free RAM**         | 6GB out of 16GB available   |
 
 > **Note:** The system specifications and operational state during testing are provided above to ensure complete transparency and reproducibility. This information allows others to accurately interpret the performance results, compare them with their own systems, and understand any potential variations. Factors like CPU generation, GPU model, storage type, available memory, background load, thermal conditions, and power settings can significantly affect benchmark outcomes. Sharing these details helps establish a reliable and fair performance baseline.
-
 ---
 
 ## 🎯 Test Files Used
@@ -76,6 +75,23 @@
 > *Note: Throughput is calculated as (output file size) / time taken.* <br>
 > For encode step: output file size ≈ input file size ÷ 2 <br>
 > For decode step: output file size ≈ input file size × 2
+
+## 🧠 Additional Notes on Storage & I/O Bottlenecks
+
+While the `txtd` format and its corresponding encoders/decoders demonstrate high computational throughput, **actual performance is also strongly influenced by the characteristics of the storage medium** used during testing or deployment. Below are critical considerations:
+
+| Factor                  | Impact Description                                                                 |
+|-------------------------|-------------------------------------------------------------------------------------|
+| **Storage Speed**       | If the encoder/decoder is run on a **slower storage device** (e.g., HDDs or SD cards), the overall throughput can be significantly throttled due to I/O wait times, regardless of CPU/GPU speed. |
+| **Interface Bottlenecks** | Performance can degrade if the system is using slower interfaces (e.g., USB 2.0 vs NVMe Gen 4). |
+| **Read/Write Buffering**| The internal write buffers are optimized for high-speed media. On slower media, buffer flush frequency increases, slightly impacting encoding speeds. |
+| **CPU/GPU Idle Time**   | On high-speed systems (e.g., Gen 4 SSD + RTX GPU), encoding/decoding may complete faster than the OS can flush I/O buffers. On slower disks, CPU/GPU may remain idle waiting for the disk to catch up. |
+
+> **Key Insight**: On extremely slow storage devices, such as SD cards or low-end USB drives, it's possible for the `txtd` single-threaded encoder to outperform even CUDA-based versions — not due to processing speed, but due to reduced I/O contention. Conversely, on **NVMe SSDs**, GPU acceleration unleashes its full potential.
+
+**Takeaway**:  
+> The speed of encoding and decoding is not only determined by computational power (CPU/GPU) but also by **how fast your system can read from and write to disk**. For best results, ensure you are using high-speed SSDs or memory-mapped I/O in high-throughput environments.
+
 
 ---
 
