@@ -146,7 +146,7 @@ Encoded bytes: `0x12 0x3E 0x45 0x6D`
 
 ## License
 
-MIT License — Free to use, modify, and distribute.
+Apache 2.0 Licensed – Free for use, modification, and distribution with conditions.
 
 ---
 
