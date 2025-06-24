@@ -83,7 +83,7 @@ Timing results for encoding and decoding `hw_201.csv` (17.1MB):
 
 ## License
 
-MIT License — see the LICENSE file.
+Apache 2.0 License — see the LICENSE file.
 
 ---
 
