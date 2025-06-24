@@ -52,23 +52,23 @@
 | `random_digits.txtd` | Decode    | 4.494s     | ~512 MiB         | ~227.91 MB/s                 |
 | `pi_digits.txt`      | Encode    | 0.941s     | ~286 MiB         | ~151.99 MB/s                 |
 | `pi_digits.txtd`     | Decode    | 1.147s     | ~143 MiB         | ~249.30 MB/s                 |
-| `hw_201.csv`         | Encode    | 0.381s     | ~17.1 MiB        | ~22.44 MB/s                  |
+| `hw_201.csv`         | Encode    | 0.127s     | ~17.1 MiB        | ~66.71 MB/s                  |
 | `hw_201.txtd`        | Decode    | 0.086s     | ~8.08 MiB        | ~187.91 MB/s                 |
-| `random_data.csv`    | Encode    | 19.581s    | ~1024 MiB        | ~26.17 MB/s                  |
-| `random_data.txtd`   | Decode    | 5.405s     | ~512 MiB         | ~189.44 MB/s                 |
+| `random_data.csv`    | Encode    | 7.822s     | ~1024 MiB        | ~68.63 MB/s                  |
+| `random_data.txtd`   | Decode    | 5.341s     | ~512 MiB         | ~201.03 MB/s                 |
 
 ## ⏱️ TXTD-ST Benchmark Results
 
 | File                 | Operation | Time Taken | Input File Size  | Effective Throughput (MB/s)  |
 |----------------------|-----------|------------|------------------|------------------------------|
-| `random_digits.txt`  | Encode    | 32.687s    | ~1024 MiB        | ~16.41 MB/s                  |
-| `random_digits.txtd` | Decode    | 34.388s    | ~512 MiB         | ~31.17 MB/s                  |
-| `pi_digits.txt`      | Encode    | 9.141s     | ~286 MiB         | ~16.38 MB/s                  |
-| `pi_digits.txtd`     | Decode    | 9.605s     | ~143 MiB         | ~31.18 MB/s                  |
-| `hw_201.csv`         | Encode    | 0.508s     | ~17.1 MiB        | ~17.63 MB/s                  |
-| `hw_201.txtd`        | Decode    | 0.560s     | ~8.08 MiB        | ~30.20 MB/s                  |
-| `random_data.csv`    | Encode    | 27.601s    | ~1024 MiB        | ~19.44 MB/s                  |
-| `random_data.txtd`   | Decode    | 32.209s    | ~512 MiB         | ~33.26 MB/s                  |
+| `random_digits.txt`  | Encode    | 26.156s    | ~1024 MiB        | ~20.64 MB/s                  |
+| `random_digits.txtd` | Decode    | 22.935s    | ~512 MiB         | ~46.81 MB/s                  |
+| `pi_digits.txt`      | Encode    | 7.283s     | ~286 MiB         | ~20.58 MB/s                  |
+| `pi_digits.txtd`     | Decode    | 6.356s     | ~143 MiB         | ~47.18 MB/s                  |
+| `hw_201.csv`         | Encode    | 0.408s     | ~17.1 MiB        | ~20.76 MB/s                  |
+| `hw_201.txtd`        | Decode    | 0.354s     | ~8.08 MiB        | ~50.65 MB/s                  |
+| `random_data.csv`    | Encode    | 22.703s    | ~1024 MiB        | ~23.64 MB/s                  |
+| `random_data.txtd`   | Decode    | 22.480s    | ~512 MiB         | ~47.76 MB/s                  |
 
 
 
