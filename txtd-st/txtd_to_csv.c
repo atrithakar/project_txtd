@@ -161,6 +161,11 @@ int main(int argc, char *argv[]) {
         fputc('\n', csv);
     }
 
+    // Buffering for output
+    #define WRITE_BUF_SIZE 65536
+    char write_buf[WRITE_BUF_SIZE];
+    size_t write_pos = 0;
+
     // Now decode the rest of the file (encoded body)
     unsigned char byte;
     int stop = 0;
@@ -177,9 +182,16 @@ int main(int argc, char *argv[]) {
             char ch = decode_nibble(nibbles[i]);
             if (ch == '\0') continue;
             if (ch == ',' && delimiter != ',') ch = delimiter;
-            fputc(ch, csv);
+            write_buf[write_pos++] = ch;
+            if (write_pos == WRITE_BUF_SIZE) {
+                fwrite(write_buf, 1, WRITE_BUF_SIZE, csv);
+                write_pos = 0;
+            }
         }
         if (stop) break;
+    }
+    if (write_pos > 0) {
+        fwrite(write_buf, 1, write_pos, csv);
     }
     fclose(in);
     fclose(csv);

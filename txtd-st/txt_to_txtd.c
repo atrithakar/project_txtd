@@ -85,7 +85,11 @@ int main(int argc, char *argv[]) {
     fwrite(&first, 1, 1, out);
     fputc('\n', out);
 
-    // Encode the input text file to a binary format (write directly after header)
+    // Buffering for output
+    #define WRITE_BUF_SIZE 65536
+    unsigned char write_buf[WRITE_BUF_SIZE];
+    size_t write_pos = 0;
+
     unsigned char buffer = 0;
     int half = 0;
     int ch;
@@ -96,16 +100,23 @@ int main(int argc, char *argv[]) {
             half = 1;
         } else {
             buffer |= val;
-            fwrite(&buffer, 1, 1, out);
+            write_buf[write_pos++] = buffer;
             half = 0;
+            if (write_pos == WRITE_BUF_SIZE) {
+                fwrite(write_buf, 1, WRITE_BUF_SIZE, out);
+                write_pos = 0;
+            }
         }
     }
     if (half == 0) {
         buffer = 0b1111 << 4;
-        fwrite(&buffer, 1, 1, out);
+        write_buf[write_pos++] = buffer;
     } else {
         buffer |= 0b1111;
-        fwrite(&buffer, 1, 1, out);
+        write_buf[write_pos++] = buffer;
+    }
+    if (write_pos > 0) {
+        fwrite(write_buf, 1, write_pos, out);
     }
 
     fclose(in);

@@ -77,6 +77,11 @@ int main(int argc, char *argv[]) {
     fgetc(in);
     fgetc(in);
 
+    // Buffering for output
+    #define WRITE_BUF_SIZE 65536
+    char write_buf[WRITE_BUF_SIZE];
+    size_t write_pos = 0;
+
     // Decode the rest of the file
     unsigned char byte;
     while (fread(&byte, 1, 1, in) == 1) {
@@ -84,10 +89,21 @@ int main(int argc, char *argv[]) {
         unsigned char low  = byte & 0x0F;
 
         if (high == 0b1111) break;
-        fputc(decode_nibble(high), out);
+        write_buf[write_pos++] = decode_nibble(high);
+        if (write_pos == WRITE_BUF_SIZE) {
+            fwrite(write_buf, 1, WRITE_BUF_SIZE, out);
+            write_pos = 0;
+        }
 
         if (low == 0b1111) break;
-        fputc(decode_nibble(low), out);
+        write_buf[write_pos++] = decode_nibble(low);
+        if (write_pos == WRITE_BUF_SIZE) {
+            fwrite(write_buf, 1, WRITE_BUF_SIZE, out);
+            write_pos = 0;
+        }
+    }
+    if (write_pos > 0) {
+        fwrite(write_buf, 1, write_pos, out);
     }
     fclose(in);
     fclose(out);
