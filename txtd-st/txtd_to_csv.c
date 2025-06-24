@@ -161,15 +161,25 @@ int main(int argc, char *argv[]) {
         fputc('\n', csv);
     }
 
-    // Buffering for output
+    // Buffering for input and output
+    #define READ_BUF_SIZE 65536
     #define WRITE_BUF_SIZE 65536
+    char read_buf[READ_BUF_SIZE];
+    size_t read_len = 0, read_pos = 0;
     char write_buf[WRITE_BUF_SIZE];
     size_t write_pos = 0;
 
     // Now decode the rest of the file (encoded body)
     unsigned char byte;
     int stop = 0;
-    while (!stop && fread(&byte, 1, 1, in) == 1) {
+    while (!stop) {
+        // Refill read buffer if needed
+        if (read_pos >= read_len) {
+            read_len = fread(read_buf, 1, READ_BUF_SIZE, in);
+            read_pos = 0;
+            if (read_len == 0) break;
+        }
+        byte = (unsigned char)read_buf[read_pos++];
         unsigned char nibbles[2];
         nibbles[0] = (byte & 0xF0) >> 4;
         nibbles[1] = (byte & 0x0F);

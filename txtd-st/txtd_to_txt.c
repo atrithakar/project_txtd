@@ -77,25 +77,35 @@ int main(int argc, char *argv[]) {
     fgetc(in);
     fgetc(in);
 
-    // Buffering for output
+    // Buffering for input and output
+    #define READ_BUF_SIZE 65536
     #define WRITE_BUF_SIZE 65536
+    char read_buf[READ_BUF_SIZE];
+    size_t read_len = 0, read_pos = 0;
     char write_buf[WRITE_BUF_SIZE];
     size_t write_pos = 0;
 
-    // Decode the rest of the file
     unsigned char byte;
-    while (fread(&byte, 1, 1, in) == 1) {
+    int done = 0;
+    while (!done) {
+        // Refill read buffer if needed
+        if (read_pos >= read_len) {
+            read_len = fread(read_buf, 1, READ_BUF_SIZE, in);
+            read_pos = 0;
+            if (read_len == 0) break;
+        }
+        byte = (unsigned char)read_buf[read_pos++];
         unsigned char high = (byte >> 4) & 0x0F;
         unsigned char low  = byte & 0x0F;
 
-        if (high == 0b1111) break;
+        if (high == 0b1111) { done = 1; break; }
         write_buf[write_pos++] = decode_nibble(high);
         if (write_pos == WRITE_BUF_SIZE) {
             fwrite(write_buf, 1, WRITE_BUF_SIZE, out);
             write_pos = 0;
         }
 
-        if (low == 0b1111) break;
+        if (low == 0b1111) { done = 1; break; }
         write_buf[write_pos++] = decode_nibble(low);
         if (write_pos == WRITE_BUF_SIZE) {
             fwrite(write_buf, 1, WRITE_BUF_SIZE, out);

@@ -85,15 +85,26 @@ int main(int argc, char *argv[]) {
     fwrite(&first, 1, 1, out);
     fputc('\n', out);
 
-    // Buffering for output
+    // Buffering for input and output
+    #define READ_BUF_SIZE 65536
     #define WRITE_BUF_SIZE 65536
     unsigned char write_buf[WRITE_BUF_SIZE];
     size_t write_pos = 0;
+    char read_buf[READ_BUF_SIZE];
+    size_t read_len = 0, read_pos = 0;
 
     unsigned char buffer = 0;
     int half = 0;
     int ch;
-    while ((ch = fgetc(in)) != EOF) {
+
+    while (1) {
+        // Refill read buffer if needed
+        if (read_pos >= read_len) {
+            read_len = fread(read_buf, 1, READ_BUF_SIZE, in);
+            read_pos = 0;
+            if (read_len == 0) break;
+        }
+        ch = (unsigned char)read_buf[read_pos++];
         unsigned char val = encode_char((char)ch);
         if (half == 0) {
             buffer = val << 4;

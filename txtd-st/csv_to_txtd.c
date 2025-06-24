@@ -158,43 +158,43 @@ int main(int argc, char *argv[]) {
     fputs(line, out);
     if (line[strlen(line)-1] != '\n') fputc('\n', out); // ensure newline
 
-    // Buffering for output
+    // Buffering for input and output
+    #define READ_BUF_SIZE 65536
     #define WRITE_BUF_SIZE 65536
     unsigned char write_buf[WRITE_BUF_SIZE];
     size_t write_pos = 0;
+    char read_buf[READ_BUF_SIZE];
+    size_t read_len = 0, read_pos = 0;
 
-    // Now encode the rest of the file as usual
     int half = 0;
     unsigned char buffer = 0;
-    while (fgets(line, sizeof(line), in)) {
-        int in_quote = 0;
-        for (size_t i = 0; i < strlen(line); ++i) {
-            char c = line[i];
-            if (c == '"' || c == '\'') {
-                in_quote = !in_quote;
-            }
-            // If not in quotes and c is a common delimiter, treat as comma
-            if (!in_quote && is_common_delim(c)) {
-                c = ',';
-            }
-            unsigned char val = encode_char(c);
-            if (val == 0xFF) {
-                fprintf(stderr, "Unexpected invalid character '%c' in line: %s\n", line[i], line);
-                fclose(in);
-                fclose(out);
-                return 1;
-            }
-            if (half == 0) {
-                buffer = val << 4;
-                half = 1;
-            } else {
-                buffer |= val;
-                write_buf[write_pos++] = buffer;
-                half = 0;
-                if (write_pos == WRITE_BUF_SIZE) {
-                    fwrite(write_buf, 1, WRITE_BUF_SIZE, out);
-                    write_pos = 0;
-                }
+    int in_quote = 0;
+    int c;
+    while (1) {
+        // Refill read buffer if needed
+        if (read_pos >= read_len) {
+            read_len = fread(read_buf, 1, READ_BUF_SIZE, in);
+            read_pos = 0;
+            if (read_len == 0) break;
+        }
+        c = (unsigned char)read_buf[read_pos++];
+        if (c == '"' || c == '\'') {
+            in_quote = !in_quote;
+        }
+        // If not in quotes and c is a common delimiter, treat as comma
+        char out_c = (in_quote || !is_common_delim(c)) ? c : ',';
+        unsigned char val = encode_char(out_c);
+        if (val == 0xFF) continue;
+        if (half == 0) {
+            buffer = val << 4;
+            half = 1;
+        } else {
+            buffer |= val;
+            write_buf[write_pos++] = buffer;
+            half = 0;
+            if (write_pos == WRITE_BUF_SIZE) {
+                fwrite(write_buf, 1, WRITE_BUF_SIZE, out);
+                write_pos = 0;
             }
         }
     }
