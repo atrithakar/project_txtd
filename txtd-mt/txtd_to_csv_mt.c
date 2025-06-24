@@ -62,6 +62,34 @@ int read_checksum(const char *filename, char *out_hex, size_t hex_size) {
     return 0;
 }
 
+// Infer delimiter from header line
+char infer_delimiter(const char *line) {
+    const char COMMON_DELIMS[] = {',', ';', '\t', '|', '^', '~', 0};
+    int counts[256] = {0};
+    int in_quote = 0;
+    for (size_t i = 0; line[i] && line[i] != '\n'; ++i) {
+        char c = line[i];
+        if (c == '"' || c == '\'') {
+            in_quote = !in_quote;
+            continue;
+        }
+        if (in_quote) continue;
+        for (int j = 0; COMMON_DELIMS[j]; ++j) {
+            if (c == COMMON_DELIMS[j]) counts[(unsigned char)c]++;
+        }
+    }
+    int max_count = 0;
+    char delimiter = ',';
+    for (int j = 0; COMMON_DELIMS[j]; ++j) {
+        char c = COMMON_DELIMS[j];
+        if (counts[(unsigned char)c] > max_count) {
+            max_count = counts[(unsigned char)c];
+            delimiter = c;
+        }
+    }
+    return delimiter;
+}
+
 int main(int argc, char *argv[]) {
     clock_t start = clock();
 
@@ -73,58 +101,91 @@ int main(int argc, char *argv[]) {
     char folder[256];
     strncpy(folder, argv[1], sizeof(folder)-1);
     folder[sizeof(folder)-1] = '\0';
+
+    // Remove trailing slash if present
     size_t len = strlen(folder);
     while (len > 0 && (folder[len-1] == '/' || folder[len-1] == '\\')) {
         folder[len-1] = '\0';
         len--;
     }
 
+    // Extract basename (last component after / or \)
     char *basename = folder;
     char *slash = strrchr(folder, '/');
-#ifdef _WIN32
+    #ifdef _WIN32
     char *bslash = strrchr(folder, '\\');
     if (!slash || (bslash && bslash > slash)) slash = bslash;
-#endif
+    #endif
     if (slash) basename = slash + 1;
 
-    char header_path[300], data_path[300], delim_path[300], csv_path[300], checksum_path[300];
-    snprintf(header_path, sizeof(header_path), "%s/%s.header.txt", folder, basename);
-    snprintf(data_path, sizeof(data_path), "%s/%s.data.txtd", folder, basename);
-    snprintf(delim_path, sizeof(delim_path), "%s/%s.delimeter.txt", folder, basename);
+    // Compose file paths
+    char txtd_path[300], csv_path[300], checksum_path[300];
+    snprintf(txtd_path, sizeof(txtd_path), "%s/%s.txtd", folder, basename);
     snprintf(csv_path, sizeof(csv_path), "%s/%s.csv", folder, basename);
     snprintf(checksum_path, sizeof(checksum_path), "%s/%s.checksum.txt", folder, basename);
 
-    FILE *delim_file = fopen(delim_path, "r");
-    if (!delim_file) {
-        char try_path[300];
-        snprintf(try_path, sizeof(try_path), "%s.delimeter.txt", basename);
-        delim_file = fopen(try_path, "r");
-        if (!delim_file) {
-            perror("Failed to open delimiter file");
-            return 1;
-        }
+    FILE *in = fopen(txtd_path, "rb");
+    if (!in) {
+        perror("Failed to open packed txtd file");
+        return 1;
     }
-    char delimiter = fgetc(delim_file);
-    fclose(delim_file);
-
-    FILE *header = fopen(header_path, "r");
-    if (!header) { perror("Failed to open header file"); return 1; }
     FILE *csv = fopen(csv_path, "w");
-    if (!csv) { perror("Failed to create CSV file"); fclose(header); return 1; }
+    if (!csv) {
+        perror("Failed to create output CSV file");
+        fclose(in);
+        return 1;
+    }
 
-    char line[8192];
-    while (fgets(line, sizeof(line), header)) fputs(line, csv);
-    fclose(header);
+    // Skip first byte (0xFF), then skip the newline
+    fgetc(in);
+    fgetc(in);
 
-    FILE *data = fopen(data_path, "rb");
-    if (!data) { perror("Failed to open data file"); fclose(csv); return 1; }
-    fseek(data, 0, SEEK_END);
-    size_t n_bytes = ftell(data);
-    fseek(data, 0, SEEK_SET);
+    // Read header line (as-is, until newline)
+    char header[8192];
+    if (!fgets(header, sizeof(header), in)) {
+        fprintf(stderr, "Failed to read header from txtd file.\n");
+        fclose(in); fclose(csv);
+        return 1;
+    }
+    fputs(header, csv);
+
+    // Infer delimiter from header
+    char delimiter = infer_delimiter(header);
+
+    // If header does not end with newline, consume next char (should be newline)
+    if (header[strlen(header)-1] != '\n') {
+        int ch = fgetc(in);
+        if (ch != '\n' && ch != EOF) ungetc(ch, in);
+        fputc('\n', csv);
+    }
+
+    // Read and decode the rest of the file
+    // Read all bytes into memory for parallel decode
+    fseek(in, 0, SEEK_END);
+    size_t file_end = ftell(in);
+    long data_start = ftell(in);
+    fseek(in, 0, SEEK_SET);
+    // Skip preamble, newline, and header
+    fgetc(in); // 0xFF
+    fgetc(in); // newline
+    while (1) {
+        int c = fgetc(in);
+        if (c == EOF) break;
+        if (c == '\n') break;
+    }
+    long data_offset = ftell(in);
+    size_t n_bytes = file_end - data_offset;
+    if (n_bytes == 0) {
+        fclose(in); fclose(csv);
+        printf("CSV reconstructed at: %s\n", csv_path);
+        printf("No encoded data found.\n");
+        return 0;
+    }
+    fseek(in, data_offset, SEEK_SET);
 
     unsigned char *buf = (unsigned char*)malloc(n_bytes);
-    fread(buf, 1, n_bytes, data);
-    fclose(data);
+    fread(buf, 1, n_bytes, in);
+    fclose(in);
 
     size_t n_nibbles = n_bytes * 2;
     char *outbuf = (char*)malloc(n_nibbles);

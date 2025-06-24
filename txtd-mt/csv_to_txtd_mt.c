@@ -156,57 +156,67 @@ int main(int argc, char *argv[]) {
     fputs(line, out);
     if (line[strlen(line)-1] != '\n') fputc('\n', out); // ensure newline
 
-    // Now encode the rest of the file as usual (multi-threaded)
-    int half = 0;
-    unsigned char buffer = 0;
+    // --- Efficient multithreaded encoding and buffering ---
+    // Read the rest of the file into a large buffer
+    size_t data_cap = 16 * 1024 * 1024;
+    size_t data_len = 0;
+    char *data_buf = (char*)malloc(data_cap);
+    while (fgets(line, sizeof(line), in)) {
+        size_t len = strlen(line);
+        if (data_len + len >= data_cap) {
+            data_cap *= 2;
+            data_buf = (char*)realloc(data_buf, data_cap);
+        }
+        memcpy(data_buf + data_len, line, len);
+        data_len += len;
+    }
+    fclose(in);
+
+    // Encode in parallel
+    unsigned char *encoded = (unsigned char*)malloc(data_len);
+    #pragma omp parallel for schedule(static)
+    for (size_t i = 0; i < data_len; ++i) {
+        char c = data_buf[i];
+        // Delimiter normalization (outside quotes not handled, but matches previous logic)
+        if (is_common_delim(c)) c = ',';
+        encoded[i] = encode_char(c);
+    }
+
+    // Pack nibbles into bytes and buffer writes
     unsigned char *write_buffer = (unsigned char*)malloc(WRITE_BUF_SIZE);
     size_t write_pos = 0;
-    while (fgets(line, sizeof(line), in)) {
-        int in_quote = 0;
-        size_t len_line = strlen(line);
-        unsigned char *encoded = (unsigned char*)malloc(len_line);
-        #pragma omp parallel for
-        for (size_t i = 0; i < len_line; ++i) {
-            char c = line[i];
-            if (c == '"' || c == '\'') {
-                // Quotes are not encoded, just pass as-is
-                encoded[i] = encode_char(c);
-            } else if (!in_quote && is_common_delim(c)) {
-                encoded[i] = encode_char(',');
-            } else {
-                encoded[i] = encode_char(c);
+    int half = 0;
+    unsigned char byte = 0;
+    for (size_t i = 0; i < data_len; ++i) {
+        if (encoded[i] == 0xFF) continue;
+        if (half == 0) {
+            byte = encoded[i] << 4;
+            half = 1;
+        } else {
+            byte |= encoded[i];
+            write_buffer[write_pos++] = byte;
+            half = 0;
+            if (write_pos == WRITE_BUF_SIZE) {
+                fwrite(write_buffer, 1, WRITE_BUF_SIZE, out);
+                write_pos = 0;
             }
         }
-        for (size_t i = 0; i < len_line; ++i) {
-            if (encoded[i] == 0xFF) continue;
-            if (half == 0) {
-                buffer = encoded[i] << 4;
-                half = 1;
-            } else {
-                buffer |= encoded[i];
-                write_buffer[write_pos++] = buffer;
-                half = 0;
-                if (write_pos == WRITE_BUF_SIZE) {
-                    fwrite(write_buffer, 1, WRITE_BUF_SIZE, out);
-                    write_pos = 0;
-                }
-            }
-        }
-        free(encoded);
     }
+    // Final nibble padding
     if (half == 0) {
-        buffer = 0b1111 << 4;
-        write_buffer[write_pos++] = buffer;
+        byte = 0b1111 << 4;
+        write_buffer[write_pos++] = byte;
     } else {
-        buffer |= 0b1111;
-        write_buffer[write_pos++] = buffer;
+        byte |= 0b1111;
+        write_buffer[write_pos++] = byte;
     }
     if (write_pos > 0) {
         fwrite(write_buffer, 1, write_pos, out);
     }
     free(write_buffer);
+    free(data_buf);
+    free(encoded);
 
-    fclose(in);
     fclose(out);
 
     printf("Encoding complete.\n");
