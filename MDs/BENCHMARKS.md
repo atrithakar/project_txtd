@@ -61,14 +61,14 @@
 
 | File                 | Operation | Time Taken | Input File Size  | Effective Throughput (MB/s)  |
 |----------------------|-----------|------------|------------------|------------------------------|
-| `random_digits.txt`  | Encode    | 26.156s    | ~1024 MiB        | ~20.64 MB/s                  |
-| `random_digits.txtd` | Decode    | 22.935s    | ~512 MiB         | ~46.81 MB/s                  |
-| `pi_digits.txt`      | Encode    | 7.283s     | ~286 MiB         | ~20.58 MB/s                  |
-| `pi_digits.txtd`     | Decode    | 6.356s     | ~143 MiB         | ~47.18 MB/s                  |
-| `hw_201.csv`         | Encode    | 0.408s     | ~17.1 MiB        | ~20.76 MB/s                  |
-| `hw_201.txtd`        | Decode    | 0.354s     | ~8.08 MiB        | ~50.65 MB/s                  |
-| `random_data.csv`    | Encode    | 22.703s    | ~1024 MiB        | ~23.64 MB/s                  |
-| `random_data.txtd`   | Decode    | 22.480s    | ~512 MiB         | ~47.76 MB/s                  |
+| `random_digits.txt`  | Encode    | 14.912s    | ~1024 MiB        | ~36.00 MB/s                  |
+| `random_digits.txtd` | Decode    | 15.722s    | ~512 MiB         | ~68.29 MB/s                  |
+| `pi_digits.txt`      | Encode    | 4.158s     | ~286 MiB         | ~36.06 MB/s                  |
+| `pi_digits.txtd`     | Decode    | 4.353s     | ~143 MiB         | ~68.89 MB/s                  |
+| `hw_201.csv`         | Encode    | 0.328s     | ~17.1 MiB        | ~25.83 MB/s                  |
+| `hw_201.txtd`        | Decode    | 0.172s     | ~8.08 MiB        | ~104.24 MB/s                 |
+| `random_data.csv`    | Encode    | 16.768s    | ~1024 MiB        | ~32.01 MB/s                  |
+| `random_data.txtd`   | Decode    | 11.836s    | ~512 MiB         | ~90.71 MB/s                  |
 
 
 
