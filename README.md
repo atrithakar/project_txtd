@@ -64,16 +64,16 @@ Timing results for encoding and decoding `pi_digits.txt` (286MB):
 
 | Step   | CUDA (GPU) | CPU (Multithreaded) | CPU (Single-threaded) |
 |--------|------------|----------------------|------------------------|
-| Encode | 0.98s      | 3.49s                | 9.86s                  |
-| Decode | 5.75s      | 6.06s                | 11.22s                 |
+| Encode | 0.59s      | 0.94s                | 4.15s                  |
+| Decode | 0.75s      | 1.14s                | 3.35s                  |
 
 
 Timing results for encoding and decoding `hw_201.csv` (17.1MB):
 
 | Step   | CPU (Single-threaded) | CPU (Multithreaded) |
 |--------|----------------------|------------------------|
-| Encode | 0.92s                | 0.54s                  |
-| Decode | 1.06s                | 0.39s                  |
+| Encode | 0.32s                | 0.12s                  |
+| Decode | 0.17s                | 0.08s                  |
 
 *NOTE: The timings may change from system to system and based on many other variables like ambient temperature too. This comparison is here just to give a rough idea about performance comparison among different implementations*
 
