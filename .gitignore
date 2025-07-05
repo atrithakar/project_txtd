@@ -8,7 +8,7 @@
 *.lib
 *.bat
 # txtd-cuda/csv_to_txtd_cuda.cu
-txtd-cuda/txtd_to_csv_cuda.cu
+# txtd-cuda/txtd_to_csv_cuda.cu
 temp/
 smart_cli.c
 smart_decoder.c
