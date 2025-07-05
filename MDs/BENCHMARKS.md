@@ -43,6 +43,10 @@
 | `random_digits.txtd` | Decode    | 2.605s     | ~512 MiB         | ~393.02 MB/s                 |
 | `pi_digits.txt`      | Encode    | 0.598s     | ~286 MiB         | ~119.57 MB/s                 |
 | `pi_digits.txtd`     | Decode    | 0.756s     | ~143 MiB         | ~378.97 MB/s                 |
+| `hw_201.csv`         | Encode    | 0.250s     | ~17.1 MiB        | ~35.86 MB/s                  |
+| `hw_201.txtd`        | Decode    | 0.238s     | ~8.08 MiB        | ~71.19 MB/s                  |
+| `random_data.csv`    | Encode    | 4.928s     | ~1085.44 MiB     | ~115.54 MB/s                 |
+| `random_data.txtd`   | Decode    | 6.296s     | ~512 MiB         | ~180.77 MB/s                 |
 
 ## ⏱️ TXTD-MT Benchmark Results
 
