@@ -80,6 +80,8 @@
 > For encode step: output file size ≈ input file size ÷ 2 <br>
 > For decode step: output file size ≈ input file size × 2
 
+> **NOTE: The benchmark results in this document are periodically updated, as seen in the commit history. Some readers may question whether the system runtime conditions (such as thermal state, power profile, or background load) remain consistent across different test runs. I want to clarify that whenever I conduct new tests and update these benchmarks, I take care to ensure that the runtime environment of my system remains as close as possible to the parameters outlined at the start of this document. This is to ensure fairness, reproducibility, and the integrity of the reported figures.**
+
 ## 🧠 Additional Notes on Storage & I/O Bottlenecks
 
 While the `txtd` format and its corresponding encoders/decoders demonstrate high computational throughput, **actual performance is also strongly influenced by the characteristics of the storage medium** used during testing or deployment. Below are critical considerations:
