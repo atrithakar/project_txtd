@@ -1,5 +1,3 @@
-
-
 # Build
 
 ## Single-threaded CPU Implementation
@@ -30,6 +28,8 @@ nvcc -I"C:\OpenSSL-Win64\include" -L"C:\OpenSSL-Win64\lib\VC\x64\MD" txtd_to_txt
 ```
 
 *Adjust include/library paths if necessary.*
+
+> **Note: To enhance the performance of the application compiled using `gcc` or `nvcc`, you can pass the `-O3` flag immediately after the compiler name. This enables aggressive optimizations, resulting in faster execution of the generated `.exe` file. However, it may also lead to a larger binary size.**
 
 ---
 
