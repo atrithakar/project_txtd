@@ -130,24 +130,38 @@ int main(int argc, char *argv[]) {
 
     size_t total_read = 0;
     while (!feof(in)) {
-        size_t bytes_read = fread(host_chunk, 1, CHUNK_SIZE, in);
-        if (bytes_read == 0) break;
+        size_t buffer_pos = 0;
+        // Fill host_chunk with normalized data (normalize delimiters)
+        while (buffer_pos < CHUNK_SIZE) {
+            if (!fgets(line, sizeof(line), in)) break;
+            size_t linelen = strlen(line);
+            if (buffer_pos + linelen > CHUNK_SIZE) break;
+            int in_quote = 0;
+            for (size_t i = 0; i < linelen; ++i) {
+                char c = line[i];
+                if (c == '"' || c == '\'') in_quote = !in_quote;
+                // Normalize delimiters outside quotes
+                if (!in_quote && is_common_delim(c)) c = ',';
+                host_chunk[buffer_pos++] = c;
+            }
+        }
+        if (buffer_pos == 0) break;
 
-        cudaMemcpy(device_in, host_chunk, bytes_read, cudaMemcpyHostToDevice);
+        cudaMemcpy(device_in, host_chunk, buffer_pos, cudaMemcpyHostToDevice);
 
-        int num_threads = (bytes_read + 1) / 2;
+        int num_threads = (buffer_pos + 1) / 2;
         int blocks = (num_threads + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
-        encode_and_pack_kernel<<<blocks, THREADS_PER_BLOCK>>>(device_in, device_out, bytes_read);
+        encode_and_pack_kernel<<<blocks, THREADS_PER_BLOCK>>>(device_in, device_out, buffer_pos);
         cudaDeviceSynchronize();
 
         unsigned char *encoded_host;
-        cudaHostAlloc((void**)&encoded_host, encoded_chunk_size, cudaHostAllocDefault);
-        cudaMemcpy(encoded_host, device_out, (bytes_read + 1) / 2, cudaMemcpyDeviceToHost);
+        cudaHostAlloc((void**)&encoded_host, (buffer_pos + 1) / 2, cudaHostAllocDefault);
+        cudaMemcpy(encoded_host, device_out, (buffer_pos + 1) / 2, cudaMemcpyDeviceToHost);
 
-        fwrite(encoded_host, 1, (bytes_read + 1) / 2, out);
+        fwrite(encoded_host, 1, (buffer_pos + 1) / 2, out);
         cudaFreeHost(encoded_host);
 
-        total_read += bytes_read;
+        total_read += buffer_pos;
     }
 
     fclose(in);
