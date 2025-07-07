@@ -33,4 +33,10 @@ nvcc -I"C:\OpenSSL-Win64\include" -L"C:\OpenSSL-Win64\lib\VC\x64\MD" txtd_to_txt
 
 ---
 
+## `compare_files.c`
+```
+gcc compare_files.c -o compare_files -lssl -lcrypto
+```
+> **Note: This was compiled using the GCC compiler from the MINGW64 environment in the MSYS2 terminal suite. If you're using GCC directly, the compilation commands will be similar to those shown for the Nvidia GPU implementation — except you'll use `gcc` instead of `nvcc`.**
 
+---
